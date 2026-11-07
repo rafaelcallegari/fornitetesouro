@@ -182,3 +182,26 @@ where not exists (select 1 from public.event_windows);
 -- insert into private.settings (key, value)
 -- values ('admin_hash', extensions.crypt('TROQUE_ESTA_SENHA', extensions.gen_salt('bf')))
 -- on conflict (key) do update set value = excluded.value;
+
+-- ---------- Ao vivo: avisa todos os navegadores a cada baú novo ou apagado ----------
+create or replace function public.chests_broadcast()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  begin
+    if tg_op = 'INSERT' then
+      perform realtime.send(
+        jsonb_build_object('id', new.id, 'opened_at', new.opened_at, 'poi', new.poi, 'prize', new.prize,
+                           'tier', new.tier, 'x', new.x, 'y', new.y, 'nick', new.nick),
+        'novo', 'cacaobau', false);
+    else
+      perform realtime.send(jsonb_build_object('id', old.id), 'removido', 'cacaobau', false);
+    end if;
+  exception when others then
+    null; -- ao vivo nunca pode impedir o registro
+  end;
+  return null;
+end $$;
+revoke execute on function public.chests_broadcast() from public, anon, authenticated;
+drop trigger if exists chests_broadcast on public.chests;
+create trigger chests_broadcast after insert or delete on public.chests
+  for each row execute function public.chests_broadcast();

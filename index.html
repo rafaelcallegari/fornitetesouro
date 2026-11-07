@@ -2,248 +2,337 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Caça ao Baú · Rastreador comunitário</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caça ao Baú · Rastreador ao vivo do Treasure Hunt</title>
+<meta name="description" content="Rastreador comunitário dos baús do Treasure Hunt do Fortnite: registre o que saiu e veja ao vivo onde e quando os prêmios aparecem.">
+<meta name="theme-color" content="#07111f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 10h18v9H3z' fill='%238a5a2b'/%3E%3Cpath d='M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5z' fill='%23a8703a'/%3E%3Crect x='3' y='9' width='18' height='2' fill='%23e0a526'/%3E%3Crect x='10' y='9' width='4' height='5' fill='%23e0a526'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     color-scheme: dark;
-    --bg: #121211; --surface-1: #1a1a19; --surface-2: #242422; --line: #383835;
-    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
-    --s-out: #3987e5; --s-in: #d95926; --gold: #e0a526;
-    --t-nada: #6b6a65; --t-gizmo: #199e70; --t-cosmetico: #9085e9;
-    --t-veiculo: #3987e5; --t-dourado: #c98500; --t-token: #d55181;
+    --bg: #07111f; --surface-1: #0d1b2e; --surface-2: #132640; --surface-3: #1a3152;
+    --line: #1f3657; --line-gold: rgba(224,165,38,.22);
+    --text-primary: #f3ead7; --text-secondary: #c9bfa8; --text-muted: #8f8a78;
+    --gold: #e0a526; --gold-2: #f5c451;
+    --s-out: #3987e5; --s-in: #d95926;
     --good: #0ca30c; --critical: #d03b3b;
+    --radius: 16px;
+    --font-title: 'Pirata One', 'Inter', serif;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text-primary);
-         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  header { position: sticky; top: 0; z-index: 5; background: var(--surface-1);
-           border-bottom: 1px solid var(--line); padding: 10px 14px;
-           display: flex; align-items: center; gap: 10px; }
-  header h1 { font-size: 17px; margin: 0; flex: 1; }
-  header h1 span { color: var(--gold); }
-  nav { display: flex; gap: 4px; padding: 8px 14px; background: var(--surface-1);
-        border-bottom: 1px solid var(--line); overflow-x: auto; }
-  nav button { flex: 1; min-width: 84px; }
-  nav button.on { background: var(--gold); color: #111; border-color: var(--gold); }
-  main { max-width: 860px; margin: 0 auto; padding: 14px; }
-  section.tab { display: none; } section.tab.on { display: block; }
-  .card { background: var(--surface-1); border: 1px solid var(--line);
-          border-radius: 12px; padding: 14px; margin-bottom: 14px; }
-  .card h2 { font-size: 16px; margin: 0 0 10px; }
+  html, body { margin: 0; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(224,165,38,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 30%, rgba(57,135,229,.10), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text-primary);
+    font: 15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, select, input { font: inherit; color: var(--text-primary); }
+  button { cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  a { color: var(--gold-2); }
+
+  /* ---------- Topo ---------- */
+  .top { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+         background: rgba(7,17,31,.78); border-bottom: 1px solid var(--line-gold); }
+  .top-in { max-width: 1400px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+  .brand h1 { font: 400 30px/1 var(--font-title); margin: 0; letter-spacing: .5px; }
+  .brand h1 span { color: var(--gold); }
+  .brand small { display: block; font-size: 11px; color: var(--text-muted); letter-spacing: .4px; text-transform: uppercase; }
+  .live { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .8px;
+          padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--text-muted); text-transform: uppercase; }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+  .live.on { color: #7ee07e; border-color: rgba(12,163,12,.45); }
+  .live.on i { background: #2fd12f; box-shadow: 0 0 0 0 rgba(47,209,47,.6); animation: pulse 1.8s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(47,209,47,.55); } 70% { box-shadow: 0 0 0 8px rgba(47,209,47,0); } 100% { box-shadow: 0 0 0 0 rgba(47,209,47,0); } }
+  .kpis { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .kpi { background: var(--surface-1); border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; min-width: 92px; }
+  .kpi b { display: block; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 11px; color: var(--text-muted); }
+  .kpi.gold b { color: var(--gold-2); }
+  .th { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); color: var(--text-secondary); }
+  .th.now { background: linear-gradient(90deg, #d95926, #e0a526); color: #1a0e02; }
+
+  /* ---------- Grade principal ---------- */
+  .app { max-width: 1400px; margin: 0 auto; padding: 16px; display: grid; gap: 16px;
+         grid-template-columns: minmax(0, 1fr) 390px; grid-template-areas: "map reg" "stats reg"; }
+  #panelMap { grid-area: map; }
+  #panelReg { grid-area: reg; position: sticky; top: 88px; align-self: start; max-height: calc(100vh - 104px); overflow: auto; }
+  #panelStats { grid-area: stats; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-content: start; }
+  #panelStats .wide { grid-column: 1 / -1; }
+
+  .card { background: linear-gradient(180deg, rgba(19,38,64,.9), rgba(13,27,46,.92)); border: 1px solid var(--line);
+          border-radius: var(--radius); padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .card h2 { font: 700 16px/1.3 Inter, sans-serif; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .ttl { font: 400 24px/1 var(--font-title); color: var(--gold-2); letter-spacing: .4px; }
   .muted { color: var(--text-muted); font-size: 13px; }
   .sec { color: var(--text-secondary); }
-  button, select, input { font: inherit; color: var(--text-primary); background: var(--surface-2);
-          border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
-  button { cursor: pointer; } button:disabled { opacity: .5; cursor: default; }
-  button.primary { background: var(--gold); color: #111; border-color: var(--gold); font-weight: 600; }
-  button.danger { color: #ff8a8a; }
-  label.field { display: block; margin-bottom: 10px; }
-  label.field > span { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
-  select, input[type=datetime-local], input[type=text], input[type=password] { width: 100%; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+
+  /* ---------- Controles ---------- */
+  .field { display: block; margin: 12px 0; }
+  .field > span { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  input[type=text], input[type=password], input[type=datetime-local], select {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; outline: none; }
+  input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(224,165,38,.18); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chips button.on { border-color: var(--gold); color: var(--gold); }
-  .prizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-  .prize { text-align: left; border-left: 4px solid var(--c, var(--line)); padding: 10px; min-height: 56px; }
-  .prize small { display: block; color: var(--text-muted); font-size: 12px; }
-  .prize.big { grid-column: 1 / -1; min-height: 64px; font-size: 17px; font-weight: 600; text-align: center; }
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
-  .kpi { background: var(--surface-2); border-radius: 10px; padding: 10px; }
-  .kpi b { display: block; font-size: 24px; }
-  .kpi span { font-size: 12px; color: var(--text-secondary); }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
-  th { color: var(--text-secondary); font-weight: 500; font-size: 12px; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .verdict { padding: 10px; border-radius: 8px; background: var(--surface-2); margin-top: 10px; }
-  .verdict.yes { border-left: 4px solid var(--good); }
-  .verdict.no { border-left: 4px solid var(--text-muted); }
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); margin: 6px 0; }
+  .chip { background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+  .chip.on { border-color: var(--gold); color: var(--gold-2); background: rgba(224,165,38,.10); }
+  .chip.off { opacity: .4; text-decoration: line-through; }
+  .btn { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; font-weight: 600; }
+  .btn.primary { background: linear-gradient(180deg, var(--gold-2), var(--gold)); color: #1a0e02; border-color: var(--gold); }
+  .btn.danger { color: #ff9a9a; }
+  .btn.small { padding: 5px 9px; font-size: 12px; }
+
+  .prizes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .prize { position: relative; text-align: left; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
+           padding: 10px 10px 10px 34px; min-height: 58px; font-size: 13.5px; font-weight: 600; line-height: 1.25;
+           transition: transform .08s, border-color .15s, background .15s; }
+  .prize:hover { border-color: var(--c); background: var(--surface-3); }
+  .prize:active { transform: scale(.97); }
+  .prize svg { position: absolute; left: 10px; top: 12px; }
+  .prize small { display: block; color: var(--text-muted); font-size: 11.5px; font-weight: 500; margin-top: 2px; }
+  .prize.big { grid-column: 1 / -1; min-height: 56px; padding: 12px; text-align: center; font-size: 16px;
+               background: rgba(224,165,38,.08); border: 1px dashed rgba(224,165,38,.5); }
+  .step { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--gold-2); text-transform: uppercase; letter-spacing: .6px; margin: 16px 0 8px; }
+  .step b { width: 20px; height: 20px; border-radius: 50%; background: var(--gold); color: #1a0e02; display: grid; place-items: center; font-size: 11px; }
+  .where { padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); font-size: 14px; }
+  .where.ok { border-color: rgba(224,165,38,.5); }
+  .where b { color: var(--gold-2); font-size: 16px; }
+
+  /* ---------- Mapa ---------- */
+  .mapbox { display: flex; justify-content: center; }
+  .mapwrap { position: relative; width: 100%; max-width: min(100%, calc(100vh - 230px)); aspect-ratio: 1; min-width: 280px;
+             background: #0a2238; border-radius: 14px; overflow: hidden; cursor: crosshair; touch-action: manipulation;
+             box-shadow: inset 0 0 0 1px var(--line-gold), 0 20px 50px rgba(0,0,0,.35); }
+  .mapwrap img, .mapwrap canvas, .mapwrap svg.overlay, .mapwrap svg.grid { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mapwrap img { object-fit: cover; user-select: none; -webkit-user-drag: none; }
+  .mapwrap svg.overlay { pointer-events: none; }
+  .pin { position: absolute; width: 26px; height: 26px; margin: -26px 0 0 -13px; display: none; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
+  .ripple { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid var(--gold-2);
+            pointer-events: none; animation: ripple .9s ease-out forwards; }
+  @keyframes ripple { to { transform: scale(5); opacity: 0; } }
+
+  /* ---------- Gráficos e tabelas ---------- */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-secondary); margin: 8px 0; }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
   .chart { position: relative; }
   .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .chart text { fill: var(--text-muted); font-size: 11px; }
-  #tip { position: fixed; pointer-events: none; z-index: 20; background: #000d; border: 1px solid var(--line);
-         border-radius: 8px; padding: 6px 8px; font-size: 12px; max-width: 240px; display: none; }
-  .mapwrap { position: relative; width: 100%; aspect-ratio: 1; background: #0e1a24; border-radius: 10px;
-             overflow: hidden; touch-action: manipulation; }
-  .mapwrap img, .mapwrap canvas, .mapwrap svg.grid { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .mapwrap .pin { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
-                  background: var(--gold); border: 3px solid #111; display: none; }
-  .mapwrap svg.overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  .chips button.off { opacity: .4; text-decoration: line-through; }
-  .chips i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; }
-  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .row > * { flex: 1; }
-  #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 30;
-           background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
-           display: none; gap: 12px; align-items: center; box-shadow: 0 6px 24px #0008;
-           width: min(92vw, 440px); justify-content: space-between; }
+  .chart text { fill: var(--text-muted); font-size: 11px; font-family: Inter, sans-serif; }
+  .verdict { padding: 12px; border-radius: 12px; background: var(--surface-2); margin-top: 10px; font-size: 14px; }
+  .verdict.yes { border-left: 4px solid var(--good); }
+  .verdict.no { border-left: 4px solid var(--text-muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.top1 td:first-child { color: var(--gold-2); font-weight: 800; }
+  .feed { list-style: none; padding: 0; margin: 0; }
+  .feed li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .feed li.new { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: rgba(224,165,38,.25); } to { background: transparent; } }
+  .feed time { color: var(--text-muted); font-size: 12px; min-width: 44px; }
+  #tip { position: fixed; pointer-events: none; z-index: 50; background: rgba(5,12,22,.95); border: 1px solid var(--line-gold);
+         border-radius: 10px; padding: 8px 10px; font-size: 12px; max-width: 240px; display: none; }
+
+  /* ---------- Avisos, rodapé, admin ---------- */
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 60; width: min(92vw, 460px);
+           background: var(--surface-2); border: 1px solid var(--line-gold); border-radius: 12px; padding: 12px 14px;
+           display: none; gap: 12px; align-items: center; justify-content: space-between; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
   #toast.err { border-color: var(--critical); }
-  .feed li { margin-bottom: 4px; }
-  ul { padding-left: 18px; margin: 6px 0; }
+  #toast.party { border-color: var(--gold); background: linear-gradient(90deg, rgba(217,89,38,.35), rgba(224,165,38,.25)), var(--surface-2); }
+  footer { max-width: 1400px; margin: 0 auto; padding: 12px 16px 100px; text-align: center; color: var(--text-muted); font-size: 12px; }
+  dialog { background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--line-gold); border-radius: var(--radius);
+           width: min(94vw, 640px); max-height: 86vh; padding: 18px; }
+  dialog::backdrop { background: rgba(0,0,0,.6); backdrop-filter: blur(3px); }
+  .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 140px; }
+
+  /* ---------- Abas (só celular) ---------- */
+  .tabbar { display: none; }
+  @media (max-width: 960px) {
+    .app { grid-template-columns: 1fr; grid-template-areas: "map" "reg" "stats"; padding: 12px; gap: 12px; }
+    #panelReg { position: static; max-height: none; overflow: visible; }
+    #panelStats { grid-template-columns: 1fr; }
+    body[data-tab="registrar"] #panelStats { display: none; }
+    body[data-tab="resultados"] #panelMap, body[data-tab="resultados"] #panelReg { display: none; }
+    .top { position: relative; }
+    .top-in { gap: 10px; }
+    .kpis { width: 100%; margin-left: 0; gap: 6px; }
+    .kpi { flex: 1; min-width: 0; padding: 6px 8px; }
+    .kpi b { font-size: 16px; }
+    .kpi span { display: block; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .brand h1 { font-size: 26px; }
+    .mapwrap { max-width: 100%; min-width: 0; }
+    .tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+              background: rgba(7,17,31,.92); backdrop-filter: blur(12px); border-top: 1px solid var(--line-gold); }
+    .tabbar button { flex: 1; background: transparent; border: 1px solid transparent; border-radius: 12px; padding: 10px; font-weight: 700; color: var(--text-muted); }
+    .tabbar button.on { color: #1a0e02; background: linear-gradient(180deg, var(--gold-2), var(--gold)); }
+    #toast { bottom: 76px; }
+  }
 </style>
 </head>
-<body>
-<header>
-  <h1><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="vertical-align:-4px;margin-right:6px"><path d="M3 10h18v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="#8a5a2b"/><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5z" fill="#a8703a"/><rect x="3" y="9.2" width="18" height="2" fill="#e0a526"/><rect x="10" y="9" width="4" height="5" rx="1" fill="#e0a526"/><circle cx="12" cy="11.6" r=".9" fill="#3a2410"/><path d="M7 5.6V20M17 5.6V20" stroke="#e0a526" stroke-width="1.2"/></svg>Caça ao <span>Baú</span> · Rastreador</h1>
+<body data-tab="registrar">
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#">
+      <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M3 10h18v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="#8a5a2b"/><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5z" fill="#a8703a"/><rect x="3" y="9.2" width="18" height="2" fill="#e0a526"/><rect x="10" y="9" width="4" height="5" rx="1" fill="#e0a526"/><circle cx="12" cy="11.6" r=".9" fill="#3a2410"/><path d="M7 5.6V20M17 5.6V20" stroke="#e0a526" stroke-width="1.2"/></svg>
+      <div><h1>Caça ao <span>Baú</span></h1><small>Rastreador comunitário · Treasure Hunt</small></div>
+    </a>
+    <span class="live" id="live"><i></i><span id="liveTxt">conectando</span></span>
+    <span class="th" id="thStatus" style="display:none"></span>
+    <div class="kpis" id="kpis"></div>
+  </div>
 </header>
-<nav>
-  <button data-tab="registrar" class="on">Registrar</button>
-  <button data-tab="resultados">Resultados</button>
-  <button data-tab="mapa">Mapa</button>
-  <button data-tab="admin" id="navAdmin" style="display:none">Admin</button>
-</nav>
 
-<main>
-  <!-- ================= REGISTRAR ================= -->
-  <section class="tab on" id="tab-registrar">
-    <div id="regForm">
-      <div class="card">
-        <label class="field"><span>Seu apelido (opcional, aparece nos prêmios raros)</span><input type="text" id="nick" maxlength="24" placeholder="Anônimo"></label>
-        <div class="field"><span class="muted">Onde você está: toque no mapa</span>
-          <div class="mapwrap" id="pickMap" style="margin-top:4px"><div class="pin" id="pin"></div></div>
-          <p class="sec" id="cellInfo" style="margin:6px 0 0">Nenhum local marcado ainda.</p>
-        </div>
-        <div class="field"><span class="muted">Tipo do baú</span><div class="chips" id="types"></div></div>
-        <div class="field" style="margin-top:10px">
-          <div class="chips">
-            <button id="tNow" class="on">Agora</button>
-            <button id="tOther">Outro horário</button>
-          </div>
-          <input type="datetime-local" id="when" style="display:none;margin-top:6px">
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>O que saiu do baú?</h2>
-        <p class="muted">Registre também os baús sem prêmio. Sem eles não dá para calcular nenhuma taxa.</p>
-        <div class="prizes" id="prizes"></div>
-        <label class="muted" style="display:block;margin-top:10px">
-          <input type="checkbox" id="allWeeks"> mostrar prêmios de todas as semanas
-        </label>
-      </div>
-
-      <div class="card">
-        <h2>Seus últimos registros <span class="muted" id="sessCount"></span></h2>
-        <table><tbody id="mine"></tbody></table>
+<main class="app">
+  <!-- ================= MAPA ================= -->
+  <section class="card" id="panelMap">
+    <div class="head">
+      <h2><span class="ttl">Mapa dos prêmios</span></h2>
+      <div class="chips" id="tierFilter"></div>
+    </div>
+    <div class="mapbox">
+      <div class="mapwrap" id="map">
+        <canvas id="heat"></canvas>
+        <svg class="pin" id="pin" viewBox="0 0 24 24"><path d="M12 23s-7-7.3-7-13a7 7 0 0 1 14 0c0 5.7-7 13-7 13z" fill="#f5c451" stroke="#1a0e02" stroke-width="1.5"/><circle cx="12" cy="10" r="2.6" fill="#1a0e02"/></svg>
       </div>
     </div>
+    <p class="muted" id="heatInfo" style="margin:10px 0 0;text-align:center"></p>
   </section>
 
-  <!-- ================= RESULTADOS ================= -->
-  <section class="tab" id="tab-resultados">
-    <div class="card">
-      <div class="row">
-        <label class="field"><span>Período</span>
-          <select id="fPeriod"><option value="all">Tudo</option><option value="24">Últimas 24h</option><option value="168">Últimos 7 dias</option></select></label>
-        <label class="field"><span>Conta como "prêmio"</span>
-          <select id="fMetric"><option value="any">Qualquer prêmio (inclui gizmos)</option><option value="rare">Só raros (veículo, dourado, token)</option><option value="token">Só Acesso à Loja de Piratas</option></select></label>
-      </div>
-      <div class="kpis" id="kpis"></div>
-      <p class="muted" id="updated"></p>
+  <!-- ================= REGISTRO ================= -->
+  <aside class="card" id="panelReg">
+    <h2><span class="ttl">Registrar baú</span></h2>
+    <p class="muted" style="margin:0">Sem login. Seus registros aparecem para todo mundo na hora.</p>
+
+    <div class="step"><b>1</b> Onde você está</div>
+    <div class="where" id="cellInfo">Toque no mapa para marcar o local.</div>
+
+    <div class="step"><b>2</b> Detalhes</div>
+    <label class="field" style="margin-top:0"><span>Seu apelido (opcional)</span><input type="text" id="nick" maxlength="24" placeholder="Anônimo"></label>
+    <div class="field"><span>Tipo do baú</span><div class="chips" id="types"></div></div>
+    <div class="field"><span>Quando</span>
+      <div class="chips"><button class="chip on" id="tNow">Agora</button><button class="chip" id="tOther">Outro horário</button></div>
+      <input type="datetime-local" id="when" style="display:none;margin-top:8px">
     </div>
 
-    <div class="card">
-      <h2>A Treasure Hour muda a chance?</h2>
+    <div class="step"><b>3</b> O que saiu? (toque para salvar)</div>
+    <div class="prizes" id="prizes"></div>
+    <label class="muted" style="display:block;margin-top:10px"><input type="checkbox" id="allWeeks"> mostrar prêmios de todas as semanas</label>
+
+    <details style="margin-top:16px">
+      <summary class="sec" style="cursor:pointer">Seus últimos registros <span class="muted" id="sessCount"></span></summary>
+      <table style="margin-top:6px"><tbody id="mine"></tbody></table>
+    </details>
+  </aside>
+
+  <!-- ================= RESULTADOS ================= -->
+  <section id="panelStats">
+    <div class="card wide">
+      <div class="head">
+        <h2><span class="ttl">A Treasure Hour muda a chance?</span></h2>
+        <div class="row" style="flex:0 1 460px">
+          <select id="fPeriod" aria-label="Período"><option value="all">Todo o período</option><option value="24">Últimas 24h</option><option value="168">Últimos 7 dias</option></select>
+          <select id="fMetric" aria-label="O que conta como prêmio"><option value="any">Qualquer prêmio</option><option value="rare">Só raros</option><option value="token">Só Loja de Piratas</option></select>
+        </div>
+      </div>
       <div class="legend"><span><i style="background:var(--s-out)"></i>Fora da janela</span><span><i style="background:var(--s-in)"></i>Dentro da Treasure Hour</span></div>
       <div class="chart" id="cWindow"></div>
       <div id="vWindow"></div>
-      <details style="margin-top:8px"><summary class="muted">Ver por tipo de prêmio</summary><table id="tTier"></table></details>
+      <details style="margin-top:8px"><summary class="muted" style="cursor:pointer">Ver por tipo de prêmio</summary><table id="tTier"></table></details>
     </div>
 
-    <div class="card">
-      <h2>Linha do tempo (por hora)</h2>
-      <p class="muted">Faixa laranja = janela anunciada. Barra com ▲ = taxa muito acima do normal fora de janela anunciada (possível Power Hour escondida).</p>
+    <div class="card wide">
+      <h2><span class="ttl">Linha do tempo</span></h2>
+      <p class="muted" style="margin:0">Taxa de prêmio por hora. Faixa laranja = janela anunciada. ▲ = muito acima do normal fora de janela (possível Power Hour escondida).</p>
       <div class="chart" id="cTimeline"></div>
       <div id="vTimeline"></div>
     </div>
 
     <div class="card">
-      <h2>Taxa por hora do dia (Brasília)</h2>
-      <p class="muted">Junta todos os dias. Barras apagadas têm menos de 30 baús e não valem como evidência.</p>
-      <div class="chart" id="cHour"></div>
-    </div>
-
-    <div class="card">
-      <h2>Efetividade por quadrante</h2>
-      <p class="muted">Ranking pelo "piso" do intervalo de confiança: um quadrante com 3 baús e 1 prêmio não passa na frente de um com 500 baús e taxa boa. Letras = colunas, números = linhas, igual à grade do mapa do jogo.</p>
+      <h2><span class="ttl">Melhores quadrantes</span></h2>
+      <p class="muted" style="margin:0 0 6px">Ordenado pelo piso do intervalo de confiança, então área com poucos baús não passa na frente por sorte.</p>
       <table id="tPoi"></table>
     </div>
 
     <div class="card">
-      <h2>Últimos prêmios raros</h2>
+      <h2><span class="ttl">Últimos prêmios raros</span></h2>
       <ul class="feed" id="feed"></ul>
-      <p class="muted">Dados autodeclarados pela comunidade. Quem só registra quando ganha infla as taxas; o admin pode remover registros suspeitos.</p>
     </div>
-  </section>
 
-  <!-- ================= MAPA ================= -->
-  <section class="tab" id="tab-mapa">
-    <div class="card">
-      <h2>Onde saíram prêmios</h2>
-      <p class="muted">Toque num tipo para esconder ou mostrar.</p>
-      <div class="chips" id="tierFilter"></div>
-      <div class="mapwrap" id="heatMap" style="margin-top:10px"><canvas id="heat"></canvas></div>
-      <p class="muted" id="heatInfo"></p>
+    <div class="card wide">
+      <h2><span class="ttl">Por hora do dia</span></h2>
+      <p class="muted" style="margin:0">Horário de Brasília, juntando todos os dias. Barras apagadas têm menos de 30 baús.</p>
+      <div class="chart" id="cHour"></div>
     </div>
-  </section>
 
-  <!-- ================= ADMIN ================= -->
-  <section class="tab" id="tab-admin">
-    <div class="card" id="adminLock">
-      <h2>Área do admin</h2>
-      <div class="row"><input type="password" id="adminKey" placeholder="Senha de admin"><button class="primary" onclick="unlockAdmin()" style="flex:0">Entrar</button></div>
-    </div>
-    <div id="adminArea" style="display:none">
-    <div class="card">
-      <h2>Janelas de Treasure Hour / Power Hour</h2>
-      <table><tbody id="wins"></tbody></table>
-      <div class="row" style="margin-top:10px">
-        <input type="text" id="wLabel" placeholder="Nome (ex.: Treasure Hour 14/11)">
-      </div>
-      <div class="row" style="margin-top:6px">
-        <label class="field"><span>Início (seu horário)</span><input type="datetime-local" id="wStart"></label>
-        <label class="field"><span>Fim</span><input type="datetime-local" id="wEnd"></label>
-      </div>
-      <button class="primary" onclick="addWindow()">Adicionar janela</button>
-    </div>
-    <div class="card">
-      <h2>Registros recentes</h2>
-      <table><tbody id="adminFeed"></tbody></table>
-    </div>
-    <button onclick="lockAdmin()">Sair do admin</button>
-    </div>
+    <p class="muted wide" style="margin:0">Dados enviados pela comunidade, sem verificação. Registre também os baús sem prêmio: sem eles as taxas ficam infladas.</p>
   </section>
 </main>
 
-<footer class="muted" style="text-align:center;padding:10px 14px 70px">Site de fã, sem fins lucrativos e não oficial. Não é afiliado nem endossado pela Epic Games. Fortnite e o mapa são marcas e conteúdo da Epic Games, Inc. · <a href="#" onclick="openAdmin();return false" style="color:inherit">admin</a></footer>
+<footer>
+  Site de fã, sem fins lucrativos e não oficial. Não é afiliado nem endossado pela Epic Games. Fortnite e o mapa são marcas e conteúdo da Epic Games, Inc.
+  · <a href="#" id="openAdmin">admin</a>
+</footer>
+
+<nav class="tabbar">
+  <button data-tab="registrar" class="on">Registrar</button>
+  <button data-tab="resultados">Resultados</button>
+</nav>
+
+<dialog id="adminDlg">
+  <div class="head"><h2><span class="ttl">Admin</span></h2><button class="btn small" id="closeAdmin">Fechar</button></div>
+  <div id="adminLock">
+    <div class="row"><input type="password" id="adminKey" placeholder="Senha de admin"><button class="btn primary" id="unlockBtn" style="flex:0">Entrar</button></div>
+  </div>
+  <div id="adminArea" style="display:none">
+    <h2 style="margin-top:6px">Janelas de Treasure Hour / Power Hour</h2>
+    <table><tbody id="wins"></tbody></table>
+    <label class="field"><span>Nome</span><input type="text" id="wLabel" placeholder="Treasure Hour 14/11"></label>
+    <div class="row">
+      <label class="field"><span>Início (seu horário)</span><input type="datetime-local" id="wStart"></label>
+      <label class="field"><span>Fim</span><input type="datetime-local" id="wEnd"></label>
+    </div>
+    <button class="btn primary" id="addWin">Adicionar janela</button>
+    <h2 style="margin-top:18px">Registros recentes</h2>
+    <table><tbody id="adminFeed"></tbody></table>
+    <button class="btn" id="lockBtn" style="margin-top:12px">Sair do admin</button>
+  </div>
+</dialog>
+
 <div id="tip"></div>
-<div id="toast"><span id="toastMsg"></span><button id="toastUndo" style="display:none">Desfazer</button></div>
+<div id="toast"><span id="toastMsg"></span><button class="btn small" id="toastUndo" style="display:none">Desfazer</button></div>
 
 <script>
 // =====================================================================
-// CONFIGURAÇÃO: troque pelos dados do seu projeto Supabase
-// (Project Settings > API > Project URL e anon public key)
+// CONFIGURAÇÃO (chave pública do Supabase, pode ficar no site)
 // =====================================================================
 const SUPABASE_URL = 'https://fvbhsnruirpervpttxvz.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_JhGggS8LYxl80-iP-ZiBAg_dYPSs2Gc'; // chave pública, pode ficar no site
+const SUPABASE_ANON_KEY = 'sb_publishable_JhGggS8LYxl80-iP-ZiBAg_dYPSs2Gc';
 const TZ = 'America/Sao_Paulo';
 
 const COLS = 'ABCDEFGHIJ';
 const cellOf = (x, y) => COLS[Math.min(9, Math.floor(x * 10))] + (Math.min(9, Math.floor(y * 10)) + 1);
-
-const CHEST_TYPES = [['normal','Normal'],['raro','Raro'],['enterrado','Enterrado'],['sprite','Sprite'],['cofre','Cofre (vault)']];
+const CHEST_TYPES = [['normal','Normal'],['raro','Raro'],['enterrado','Enterrado'],['sprite','Sprite'],['cofre','Cofre']];
 
 const TIERS = {
-  nada:      { label: 'Sem prêmio',         color: 'var(--t-nada)' },
-  gizmo:     { label: 'Gizmo',              color: 'var(--t-gizmo)' },
-  cosmetico: { label: 'Cosmético',          color: 'var(--t-cosmetico)' },
-  veiculo:   { label: 'Veículo dourado',    color: 'var(--t-veiculo)' },
-  dourado:   { label: 'Skin/item dourado',  color: '#e0a526' },
-  token:     { label: 'Loja de Piratas',    color: '#e8578f' },
+  nada:      { label: 'Sem prêmio' },
+  gizmo:     { label: 'Gizmo' },
+  cosmetico: { label: 'Cosmético' },
+  veiculo:   { label: 'Veículo dourado' },
+  dourado:   { label: 'Skin/item dourado' },
+  token:     { label: 'Loja de Piratas' },
 };
 const RARE = ['veiculo','dourado','token'];
 // Cor + formato por tipo (o formato ajuda quem não distingue bem as cores)
@@ -256,7 +345,6 @@ const TIER_MARK = {
 };
 
 // Prêmios por semana (lista não oficial, de sites de guia). Edite quando a Epic trocar.
-// from = início da semana no horário de Brasília. Sem "from" = vale sempre.
 const PRIZES = [
   { key:'token',        label:'Acesso à Loja de Piratas', tier:'token' },
   { key:'acelerador',   label:'Extraction Accelerator',   tier:'gizmo' },
@@ -266,7 +354,7 @@ const PRIZES = [
   { key:'loc_lucky',    label:'Lucky Locator',            tier:'gizmo' },
   // Semana 1
   { key:'asap_skin',    label:'Solid Gold A$AP Rocky',    tier:'dourado',   from:'2026-11-01', to:'2026-11-07' },
-  { key:'asap_pick',    label:"Gauntlets do A$AP (picareta)", tier:'dourado', from:'2026-11-01', to:'2026-11-07' },
+  { key:'asap_pick',    label:'Gauntlets do A$AP (picareta)', tier:'dourado', from:'2026-11-01', to:'2026-11-07' },
   { key:'gwagon',       label:'Mercedes-AMG G 63',        tier:'veiculo',   from:'2026-11-01', to:'2026-11-07' },
   { key:'plunder_ls',   label:'Plunder in Paradise (tela)', tier:'cosmetico', from:'2026-11-01', to:'2026-11-07' },
   { key:'llama_decal',  label:'Golden Llama Crew (decal)', tier:'cosmetico', from:'2026-11-01', to:'2026-11-07' },
@@ -280,22 +368,23 @@ const PRIZES = [
 ];
 const PRIZE_BY_KEY = Object.fromEntries(PRIZES.map(p => [p.key, p]));
 PRIZE_BY_KEY.nada = { key:'nada', label:'Sem prêmio', tier:'nada' };
+const prizeLabel = k => PRIZE_BY_KEY[k]?.label || k;
 
 // =====================================================================
-const configured = !SUPABASE_URL.includes('SEU-PROJETO');
-const sb = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pct = (x, d = 1) => (x * 100).toFixed(d).replace('.', ',') + '%';
-const fmtN = n => n.toLocaleString('pt-BR');
+const fmtN = n => (n || 0).toLocaleString('pt-BR');
 const fmtDT = d => new Date(d).toLocaleString('pt-BR', { timeZone: TZ, day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+const fmtT = d => new Date(d).toLocaleTimeString('pt-BR', { timeZone: TZ, hour:'2-digit', minute:'2-digit' });
 const hourBRT = d => +new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' }).format(new Date(d));
 const store = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
                 set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
-
 const DEVICE = (() => { let d = store.get('device'); if (!d) { d = crypto.randomUUID(); store.set('device', d); } return d; })();
+
 let adminKey = store.get('adminKey', null), chestType = 'normal', pickPoint = null, sessionCount = 0;
-let hourly = [], windows = [], points = [];
+let hourly = [], windows = [], points = [], feedRows = [], totals = null;
 
 // ---------- Estatística ----------
 function wilson(k, n, z = 1.96) {
@@ -303,7 +392,7 @@ function wilson(k, n, z = 1.96) {
   const p = k / n, d = 1 + z*z/n, c = p + z*z/(2*n), m = z * Math.sqrt(p*(1-p)/n + z*z/(4*n*n));
   return [Math.max(0, (c - m) / d), Math.min(1, (c + m) / d)];
 }
-function phi(x) { // CDF normal padrão
+function phi(x) {
   const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x*x/2);
   const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
   return x > 0 ? 1 - p : p;
@@ -319,146 +408,206 @@ const isHit = tier => {
   return m === 'any' ? tier !== 'nada' : m === 'rare' ? RARE.includes(tier) : tier === 'token';
 };
 
-// ---------- UI helpers ----------
+// ---------- Avisos ----------
 let toastTimer;
-function toast(msg, undo, err) {
+function toast(msg, undo, kind) {
   $('toastMsg').textContent = msg;
-  $('toast').className = err ? 'err' : '';
+  $('toast').className = kind || '';
   $('toast').style.display = 'flex';
   $('toastUndo').style.display = undo ? '' : 'none';
   $('toastUndo').onclick = async () => { $('toast').style.display = 'none'; await undo(); };
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => $('toast').style.display = 'none', undo ? 6000 : 3500);
+  toastTimer = setTimeout(() => $('toast').style.display = 'none', undo ? 6000 : 4000);
 }
 function tipAt(e, html) {
   const t = $('tip'); t.innerHTML = html; t.style.display = 'block';
   const x = Math.min(e.clientX + 12, innerWidth - t.offsetWidth - 8);
-  t.style.left = x + 'px'; t.style.top = (e.clientY - t.offsetHeight - 12) + 'px';
+  t.style.left = x + 'px'; t.style.top = Math.max(8, e.clientY - t.offsetHeight - 12) + 'px';
 }
 const hideTip = () => $('tip').style.display = 'none';
 document.addEventListener('scroll', hideTip, true);
 
-document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
-  document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + b.dataset.tab));
-  if (b.dataset.tab === 'resultados') loadResults();
-  if (b.dataset.tab === 'mapa') loadPoints();
-  if (b.dataset.tab === 'admin') loadAdmin();
+// ---------- Abas (celular) ----------
+document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabbar button').forEach(x => x.classList.toggle('on', x === b));
+  document.body.dataset.tab = b.dataset.tab;
+  scrollTo({ top: 0 });
+  requestAnimationFrame(() => { renderResults(); drawMap(); });
 });
 
-// ---------- Mapa ----------
-// Ordem: map.png na mesma pasta (se você quiser fixar uma imagem) > mapa oficial atual via fortnite-api.com > grade.
-let mapUrlPromise;
-function mapUrl() {
-  return mapUrlPromise ||= (async () => {
-    if (await canLoad('map.png')) return 'map.png';
-    try {
-      const r = await fetch('https://fortnite-api.com/v1/map?language=pt-BR');
-      const j = await r.json();
-      const u = j?.data?.images?.pois || j?.data?.images?.blank;
-      if (u && await canLoad(u)) return u;
-    } catch {}
-    return null;
-  })();
+// ---------- Formatos dos marcadores ----------
+const SHAPE_PATH = {
+  circle: '<circle cx="6" cy="6" r="4.5"/>', square: '<rect x="1.5" y="1.5" width="9" height="9"/>',
+  diamond: '<path d="M6 .8 11.2 6 6 11.2.8 6z"/>', triangle: '<path d="M6 1 11 10.5H1z"/>',
+  star: '<path d="M6 .5l1.6 3.6 3.9.4-2.9 2.6.8 3.9L6 9 2.6 11l.8-3.9L.5 4.5l3.9-.4z"/>',
+};
+const shapeSvg = (m, size = 12) => `<svg width="${size}" height="${size}" viewBox="0 0 12 12" fill="${m.hex}" stroke="#0b0b0b" stroke-width="1" aria-hidden="true">${SHAPE_PATH[m.shape]}</svg>`;
+function mark(ctx, shape, x, y, r) {
+  ctx.beginPath();
+  if (shape === 'circle') ctx.arc(x, y, r, 0, Math.PI * 2);
+  else if (shape === 'square') ctx.rect(x - r * .9, y - r * .9, r * 1.8, r * 1.8);
+  else if (shape === 'diamond') { ctx.moveTo(x, y - r * 1.2); ctx.lineTo(x + r * 1.2, y); ctx.lineTo(x, y + r * 1.2); ctx.lineTo(x - r * 1.2, y); }
+  else if (shape === 'triangle') { ctx.moveTo(x, y - r * 1.2); ctx.lineTo(x + r * 1.1, y + r * .8); ctx.lineTo(x - r * 1.1, y + r * .8); }
+  else { for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .6 : r * 1.5; ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); } }
+  ctx.closePath();
+  ctx.lineWidth = 2; ctx.strokeStyle = '#0b0b0b'; ctx.stroke(); ctx.fill();
 }
+
+// ---------- Mapa ----------
+// Ordem: map.png na pasta do site > mapa oficial atual via fortnite-api.com > aviso.
 function canLoad(src) {
   return new Promise(res => { const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
 }
-function gridOverlay(wrap) {
-  let g = '<svg class="overlay" viewBox="0 0 100 100" preserveAspectRatio="none">';
-  for (let i = 1; i < 10; i++) g += `<line x1="${i*10}" y1="0" x2="${i*10}" y2="100" stroke="#fff" stroke-opacity=".25" stroke-width=".25"/><line x1="0" y1="${i*10}" x2="100" y2="${i*10}" stroke="#fff" stroke-opacity=".25" stroke-width=".25"/>`;
-  for (let i = 0; i < 10; i++) g += `<text x="${i*10+5}" y="3.6" text-anchor="middle" font-size="2.8" fill="#fff" fill-opacity=".8" stroke="#000" stroke-width=".4" paint-order="stroke">${COLS[i]}</text><text x="1.2" y="${i*10+5.8}" font-size="2.8" fill="#fff" fill-opacity=".8" stroke="#000" stroke-width=".4" paint-order="stroke">${i+1}</text>`;
-  wrap.insertAdjacentHTML('beforeend', g + '</svg>');
+async function mapUrl() {
+  if (await canLoad('map.png')) return 'map.png';
+  try {
+    const j = await (await fetch('https://fortnite-api.com/v1/map?language=pt-BR')).json();
+    const u = j?.data?.images?.pois || j?.data?.images?.blank;
+    if (u && await canLoad(u)) return u;
+  } catch {}
+  return null;
 }
-async function mountMap(wrap) {
-  gridOverlay(wrap);
+async function mountMap() {
+  const wrap = $('map');
+  let g = '<svg class="overlay" viewBox="0 0 100 100" preserveAspectRatio="none">';
+  for (let i = 1; i < 10; i++) g += `<line x1="${i*10}" y1="0" x2="${i*10}" y2="100" stroke="#fff" stroke-opacity=".18" stroke-width=".2"/><line x1="0" y1="${i*10}" x2="100" y2="${i*10}" stroke="#fff" stroke-opacity=".18" stroke-width=".2"/>`;
+  for (let i = 0; i < 10; i++) g += `<text x="${i*10+5}" y="3" text-anchor="middle" font-size="2.4" font-weight="700" fill="#fff" fill-opacity=".85" stroke="#000" stroke-width=".35" paint-order="stroke">${COLS[i]}</text><text x="1" y="${i*10+6.4}" font-size="2.4" font-weight="700" fill="#fff" fill-opacity=".85" stroke="#000" stroke-width=".35" paint-order="stroke">${i+1}</text>`;
+  wrap.insertAdjacentHTML('beforeend', g + '</svg>');
   const src = await mapUrl();
-  if (src) {
-    const img = new Image(); img.src = src; img.alt = 'Mapa atual da ilha';
-    wrap.prepend(img);
-    return;
+  if (src) { const img = new Image(); img.src = src; img.alt = 'Mapa atual da ilha'; img.draggable = false; wrap.prepend(img); }
+  else wrap.insertAdjacentHTML('afterbegin', '<svg class="grid" viewBox="0 0 100 100"><text x="50" y="52" text-anchor="middle" font-size="3" fill="#6b7d8c">Mapa indisponível agora</text></svg>');
+  wrap.addEventListener('click', e => {
+    const r = wrap.getBoundingClientRect();
+    setPoint({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }, true);
+  });
+  new ResizeObserver(() => drawMap()).observe(wrap);
+}
+function setPoint(pt, user) {
+  pickPoint = { x: Math.min(.999, Math.max(0, pt.x)), y: Math.min(.999, Math.max(0, pt.y)) };
+  store.set('point', pickPoint);
+  Object.assign($('pin').style, { display: 'block', left: pickPoint.x * 100 + '%', top: pickPoint.y * 100 + '%' });
+  $('cellInfo').className = 'where ok';
+  $('cellInfo').innerHTML = `Quadrante <b>${cellOf(pickPoint.x, pickPoint.y)}</b> <span class="muted">· toque em outro ponto quando mudar de área</span>`;
+  if (user) {
+    const rp = document.createElement('div'); rp.className = 'ripple';
+    Object.assign(rp.style, { left: pickPoint.x * 100 + '%', top: pickPoint.y * 100 + '%' });
+    $('map').appendChild(rp); setTimeout(() => rp.remove(), 900);
   }
-  wrap.insertAdjacentHTML('afterbegin', '<svg class="grid" viewBox="0 0 100 100"><text x="50" y="52" text-anchor="middle" font-size="3.2" fill="#6b7d8c">Mapa indisponível: coloque map.png na pasta do site</text></svg>');
 }
 
-// ---------- Registrar ----------
+const hiddenTiers = new Set();
+function buildTierFilter() {
+  $('tierFilter').innerHTML = Object.entries(TIER_MARK).map(([t, m]) =>
+    `<button class="chip" data-t="${t}">${shapeSvg(m)}${TIERS[t].label} <span class="muted" data-c="${t}">0</span></button>`).join('');
+  $('tierFilter').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const t = b.dataset.t;
+    hiddenTiers.has(t) ? hiddenTiers.delete(t) : hiddenTiers.add(t);
+    b.classList.toggle('off', hiddenTiers.has(t));
+    drawMap();
+  };
+}
+async function loadPoints() {
+  const { data, error } = await sb.from('chests').select('id,x,y,tier,prize,opened_at').neq('tier', 'nada').not('x', 'is', null)
+    .order('id', { ascending: false }).limit(5000);
+  if (!error) { points = data; drawMap(); }
+}
+function drawMap() {
+  const cv = $('heat'), r = cv.getBoundingClientRect();
+  if (!r.width) return;
+  const dpr = devicePixelRatio || 1;
+  cv.width = r.width * dpr; cv.height = r.height * dpr;
+  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
+  const order = ['gizmo', 'cosmetico', 'veiculo', 'dourado', 'token']; // raros por cima
+  const counts = {};
+  for (const p of points) counts[p.tier] = (counts[p.tier] || 0) + 1;
+  const pts = points.filter(p => TIER_MARK[p.tier] && !hiddenTiers.has(p.tier))
+                    .sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
+  const rad = Math.max(4, r.width / 120);
+  for (const p of pts) {
+    const m = TIER_MARK[p.tier];
+    ctx.fillStyle = m.hex;
+    mark(ctx, m.shape, p.x * r.width, p.y * r.height, p.tier === 'token' ? rad * 1.5 : rad);
+  }
+  document.querySelectorAll('#tierFilter [data-c]').forEach(el => el.textContent = counts[el.dataset.c] || 0);
+  $('heatInfo').textContent = `${fmtN(pts.length)} baús premiados no mapa · toque para marcar onde você está`;
+}
+
+// ---------- Registro ----------
 function buildForm() {
   $('nick').value = store.get('nick', '');
   $('nick').onchange = () => store.set('nick', $('nick').value.trim().slice(0, 24));
-  $('types').innerHTML = CHEST_TYPES.map(([k, l]) => `<button data-k="${k}" class="${k === 'normal' ? 'on' : ''}">${l}</button>`).join('');
+  $('types').innerHTML = CHEST_TYPES.map(([k, l]) => `<button class="chip ${k === 'normal' ? 'on' : ''}" data-k="${k}">${l}</button>`).join('');
   $('types').onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
     chestType = b.dataset.k;
     [...$('types').children].forEach(x => x.classList.toggle('on', x === b));
   };
-  $('tNow').onclick = () => { $('tNow').classList.add('on'); $('tOther').classList.remove('on'); $('when').style.display = 'none'; };
+  $('tNow').onclick = () => { $('tNow').classList.add('on'); $('tOther').classList.remove('on'); $('when').style.display = 'none'; renderPrizes(); };
   $('tOther').onclick = () => {
     $('tOther').classList.add('on'); $('tNow').classList.remove('on'); $('when').style.display = '';
     if (!$('when').value) $('when').value = toLocalInput(new Date());
   };
   $('allWeeks').onchange = renderPrizes;
   $('when').onchange = renderPrizes;
-  mountMap($('pickMap'));
-  $('pickMap').onclick = e => {
-    const r = $('pickMap').getBoundingClientRect();
-    setPoint({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
-  };
   const saved = store.get('point', null);
   if (saved) setPoint(saved);
   renderPrizes();
-}
-// O ponto continua marcado entre registros: quem abre vários baús no mesmo lugar só toca de novo quando mudar de área.
-function setPoint(pt) {
-  pickPoint = { x: Math.min(1, Math.max(0, pt.x)), y: Math.min(1, Math.max(0, pt.y)) };
-  store.set('point', pickPoint);
-  Object.assign($('pin').style, { display: 'block', left: pickPoint.x * 100 + '%', top: pickPoint.y * 100 + '%' });
-  $('cellInfo').innerHTML = `Local: <b>${cellOf(pickPoint.x, pickPoint.y)}</b> · toque em outro ponto quando mudar de área`;
 }
 function toLocalInput(d) { const z = new Date(d - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); }
 function openedAt() { return $('tOther').classList.contains('on') && $('when').value ? new Date($('when').value) : new Date(); }
 
 function renderPrizes() {
-  const day = openedAt().toLocaleDateString('sv-SE', { timeZone: TZ }); // yyyy-mm-dd
+  const day = openedAt().toLocaleDateString('sv-SE', { timeZone: TZ });
   const all = $('allWeeks').checked;
-  const list = PRIZES.filter(p => all || ((!p.from || day >= p.from) && (!p.to || day < p.to)));
   const order = ['token','dourado','veiculo','cosmetico','gizmo'];
-  list.sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
+  const list = PRIZES.filter(p => all || ((!p.from || day >= p.from) && (!p.to || day < p.to)))
+                     .sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
   $('prizes').innerHTML =
-    `<button class="prize big" data-k="nada" style="--c:var(--t-nada)">Sem prêmio (só loot normal)</button>` +
-    list.map(p => `<button class="prize" data-k="${p.key}" style="--c:${TIERS[p.tier].color}">${esc(p.label)}<small>${TIERS[p.tier].label}</small></button>`).join('');
+    `<button class="prize big" data-k="nada">Sem prêmio <span class="muted" style="font-weight:500">(só loot normal)</span></button>` +
+    list.map(p => `<button class="prize" data-k="${p.key}" style="--c:${TIER_MARK[p.tier].hex}">${shapeSvg(TIER_MARK[p.tier], 16)}${esc(p.label)}<small>${TIERS[p.tier].label}</small></button>`).join('');
   $('prizes').onclick = e => { const b = e.target.closest('button'); if (b) save(b.dataset.k, b); };
 }
 
 let saving = false;
 async function save(key, btn) {
   if (saving) return;
-  if (!pickPoint) { toast('Toque no mapa para marcar onde abriu o baú', null, true); $('pickMap').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  if (!pickPoint) {
+    toast('Primeiro toque no mapa para marcar onde abriu o baú', null, 'err');
+    $('map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
   saving = true; btn.disabled = true;
   const p = PRIZE_BY_KEY[key];
-  const row = { device_id: DEVICE, nick: $('nick').value.trim().slice(0, 24) || null, poi: cellOf(pickPoint.x, pickPoint.y), chest_type: chestType, prize: p.key, tier: p.tier,
-                opened_at: openedAt().toISOString(), x: pickPoint.x, y: pickPoint.y };
+  const row = { device_id: DEVICE, nick: $('nick').value.trim().slice(0, 24) || null, poi: cellOf(pickPoint.x, pickPoint.y),
+                chest_type: chestType, prize: p.key, tier: p.tier, opened_at: openedAt().toISOString(), x: pickPoint.x, y: pickPoint.y };
   const { data, error } = await sb.from('chests').insert(row).select('id').single();
   saving = false; btn.disabled = false;
-  if (error) return toast(error.message, null, true);
+  if (error) return toast(error.message, null, 'err');
   sessionCount++;
-  toast(`Salvo: ${p.label} · ${row.poi}`, async () => { await sb.rpc('delete_my_chest', { p_id: data.id, p_device: DEVICE }); sessionCount--; loadMine(); toast('Registro removido'); });
+  // aparece na hora para quem registrou, mesmo antes do aviso ao vivo chegar
+  onNew({ id: data.id, ...row }, true);
+  toast(`Salvo: ${p.label} em ${row.poi}`, async () => {
+    await sb.rpc('delete_my_chest', { p_id: data.id, p_device: DEVICE });
+    onRemoved({ id: data.id }); sessionCount--; loadMine(); toast('Registro removido');
+  });
   loadMine();
 }
 
 async function loadMine() {
-  if (!configured) return;
   const { data } = await sb.rpc('my_chests', { p_device: DEVICE });
   $('sessCount').textContent = sessionCount ? `· ${sessionCount} nesta sessão` : '';
   $('mine').innerHTML = (data || []).map(r => `<tr><td>${fmtDT(r.opened_at)}</td><td>${esc(r.poi)}</td>
-    <td>${esc(PRIZE_BY_KEY[r.prize]?.label || r.prize)}</td><td class="num"><button class="danger" data-id="${r.id}" aria-label="Apagar">✕</button></td></tr>`).join('')
+    <td>${esc(prizeLabel(r.prize))}</td><td class="num"><button class="btn small danger" data-id="${r.id}" aria-label="Apagar">✕</button></td></tr>`).join('')
     || '<tr><td class="muted">Nenhum registro ainda.</td></tr>';
   $('mine').onclick = async e => {
     const b = e.target.closest('button[data-id]'); if (!b) return;
-    await sb.rpc('delete_my_chest', { p_id: +b.dataset.id, p_device: DEVICE }); loadMine();
+    await sb.rpc('delete_my_chest', { p_id: +b.dataset.id, p_device: DEVICE });
+    onRemoved({ id: +b.dataset.id }); loadMine();
   };
 }
 
-// ---------- Carregar dados agregados ----------
+// ---------- Dados agregados ----------
 async function fetchAll(table, cols, order) {
   const out = [];
   for (let from = 0; ; from += 1000) {
@@ -468,26 +617,36 @@ async function fetchAll(table, cols, order) {
     if (data.length < 1000) return out;
   }
 }
-
-let lastLoad = 0;
-async function loadResults(force) {
-  if (!configured) { $('kpis').innerHTML = '<p class="muted">Configure o Supabase no index.html.</p>'; return; }
-  if (!force && Date.now() - lastLoad < 30000 && hourly.length) return renderResults();
+let loadingStats = false;
+async function loadStats() {
+  if (loadingStats) return;
+  loadingStats = true;
   try {
     const [h, w, tot, feed] = await Promise.all([
       fetchAll('chest_hourly', 'hour_utc,in_window,poi,tier,n', 'hour_utc'),
       sb.from('event_windows').select('*').order('starts_at'),
       sb.rpc('chest_totals'),
-      sb.from('chests').select('opened_at,poi,prize,tier,nick').in('tier', RARE).order('id', { ascending: false }).limit(10),
+      sb.from('chests').select('id,opened_at,poi,prize,tier,nick').in('tier', RARE).order('id', { ascending: false }).limit(12),
     ]);
-    hourly = h; windows = w.data || []; lastLoad = Date.now();
-    renderResults((tot.data || [])[0]);
-    renderFeed(feed.data || []);
-  } catch (e) { toast('Erro ao carregar: ' + e.message, null, true); }
+    hourly = h; windows = w.data || []; totals = (tot.data || [])[0] || totals; feedRows = feed.data || [];
+    renderResults(); renderFeed(); renderTH();
+  } catch (e) { console.warn(e); }
+  loadingStats = false;
 }
+let statsTimer;
+const scheduleStats = (ms = 4000) => { clearTimeout(statsTimer); statsTimer = setTimeout(loadStats, ms); };
 $('fPeriod').onchange = () => renderResults();
 $('fMetric').onchange = () => renderResults();
-setInterval(() => { if ($('tab-resultados').classList.contains('on')) loadResults(true); }, 60000);
+
+function renderTH() {
+  const now = Date.now(), el = $('thStatus');
+  const cur = windows.find(w => now >= +new Date(w.starts_at) && now < +new Date(w.ends_at));
+  const next = windows.filter(w => +new Date(w.starts_at) > now).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))[0];
+  el.style.display = cur || next ? '' : 'none';
+  el.className = 'th' + (cur ? ' now' : '');
+  el.textContent = cur ? `Treasure Hour AGORA até ${fmtT(cur.ends_at)}` : next ? `Próxima Treasure Hour: ${fmtDT(next.starts_at)}` : '';
+}
+setInterval(renderTH, 30000);
 
 function filtered() {
   const hrs = $('fPeriod').value;
@@ -495,10 +654,7 @@ function filtered() {
   const min = Date.now() - hrs * 3600e3;
   return hourly.filter(r => new Date(r.hour_utc) >= min);
 }
-
-let totalsCache;
-function renderResults(tot) {
-  if (tot) totalsCache = tot;
+function renderResults() {
   const rows = filtered();
   let n = 0, k = 0, tokens = 0;
   const side = { true: { n: 0, k: 0, t: {} }, false: { n: 0, k: 0, t: {} } };
@@ -509,37 +665,35 @@ function renderResults(tot) {
     if (r.tier === 'token') tokens += r.n;
   }
   $('kpis').innerHTML = [
-    [fmtN(n), 'baús no período'], [fmtN(totalsCache?.players ?? 0), 'aparelhos (total)'],
-    [n ? pct(k / n) : '0%', 'taxa de prêmio'], [fmtN(tokens), 'tokens da Loja'],
-  ].map(([b, s]) => `<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join('');
-  $('updated').textContent = lastLoad ? 'Atualizado ' + new Date(lastLoad).toLocaleTimeString('pt-BR') + ' · atualiza sozinho a cada minuto' : '';
-  renderWindow(side);
-  renderTimeline(rows);
-  renderHourOfDay(rows);
-  renderPoi(rows);
+    [fmtN(totals?.chests ?? n), 'baús'], [fmtN(totals?.players), 'jogadores'],
+    [n ? pct(k / n) : '0%', 'taxa'], [fmtN(tokens), 'Loja Pirata', 'gold'],
+  ].map(([b, s, c]) => `<div class="kpi ${c || ''}"><b>${b}</b><span>${s}</span></div>`).join('');
+  if (document.body.dataset.tab === 'resultados' || innerWidth > 960) {
+    renderWindow(side); renderTimeline(rows); renderHourOfDay(rows); renderPoi(rows);
+  }
 }
 
-// ---------- Gráfico de barras genérico (SVG) ----------
+// ---------- Gráfico de barras (SVG) ----------
 function bars(el, items, { h = 160, max, labelEvery = 1, shades = [] } = {}) {
-  const W = Math.max(300, el.clientWidth || 600), pad = { l: 34, r: 6, t: 8, b: 22 }, iw = W - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const W = Math.max(300, el.clientWidth || 600), pad = { l: 36, r: 6, t: 10, b: 22 }, iw = W - pad.l - pad.r, ih = h - pad.t - pad.b;
   const raw = max ?? Math.max(0.001, ...items.map(i => i.hi ?? i.v));
   const step = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.25].find(st => raw / st <= 4) || 0.25;
   const top = Math.ceil(raw / step) * step, nGrid = Math.round(top / step);
   const bw = iw / Math.max(1, items.length), gap = Math.min(2, bw * 0.2);
   const y = v => pad.t + ih - (v / top) * ih;
   let s = `<svg viewBox="0 0 ${W} ${h}" role="img">`;
-  for (const sh of shades) s += `<rect x="${pad.l + sh.from * bw}" y="${pad.t}" width="${(sh.to - sh.from) * bw}" height="${ih}" fill="var(--s-in)" opacity=".14"/>`;
+  for (const sh of shades) s += `<rect x="${pad.l + sh.from * bw}" y="${pad.t}" width="${(sh.to - sh.from) * bw}" height="${ih}" fill="var(--s-in)" opacity=".16"/>`;
   for (let g = 0; g <= nGrid; g++) {
     const v = step * g;
     s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>`;
-    s += `<text x="${pad.l - 4}" y="${y(v) + 4}" text-anchor="end">${pct(v, step < 0.01 ? 1 : 0)}</text>`;
+    s += `<text x="${pad.l - 6}" y="${y(v) + 4}" text-anchor="end">${pct(v, step < 0.01 ? 1 : 0)}</text>`;
   }
   items.forEach((it, i) => {
-    const x = pad.l + i * bw + gap / 2, w = Math.max(1, bw - gap), yy = y(it.v), hh = pad.t + ih - yy;
+    const x = pad.l + i * bw + gap / 2, w = Math.max(1, bw - gap), yy = y(it.v), hh = pad.t + ih - yy, rr = Math.min(4, hh, w / 2);
     s += `<g data-i="${i}"><rect x="${pad.l + i * bw}" y="${pad.t}" width="${bw}" height="${ih}" fill="transparent"/>`;
-    if (hh > 0) s += `<path d="M${x},${pad.t + ih}V${yy + Math.min(4, hh)}q0,-${Math.min(4, hh)} ${Math.min(4, w / 2)},-${Math.min(4, hh)}H${x + w - Math.min(4, w / 2)}q${Math.min(4, w / 2)},0 ${Math.min(4, w / 2)},${Math.min(4, hh)}V${pad.t + ih}Z" fill="${it.c}" opacity="${it.dim ? 0.3 : 1}"/>`;
+    if (hh > 0) s += `<path d="M${x},${pad.t + ih}V${yy + rr}q0,-${rr} ${rr},-${rr}H${x + w - rr}q${rr},0 ${rr},${rr}V${pad.t + ih}Z" fill="${it.c}" opacity="${it.dim ? 0.3 : 1}"/>`;
     if (it.hi != null && !it.dim && it.n) s += `<line x1="${x + w / 2}" x2="${x + w / 2}" y1="${y(it.lo)}" y2="${y(it.hi)}" stroke="var(--text-secondary)" stroke-width="1.5"/>`;
-    if (it.flag) s += `<text x="${x + w / 2}" y="${Math.max(10, y(it.hi ?? it.v) - 4)}" text-anchor="middle" style="fill:var(--gold);font-size:12px">▲</text>`;
+    if (it.flag) s += `<text x="${x + w / 2}" y="${Math.max(10, y(it.hi ?? it.v) - 4)}" text-anchor="middle" style="fill:var(--gold-2);font-size:12px">▲</text>`;
     if (i % labelEvery === 0) s += `<text x="${x + w / 2}" y="${h - 6}" text-anchor="middle">${esc(it.label)}</text>`;
     s += '</g>';
   });
@@ -559,12 +713,11 @@ function renderWindow(side) {
     return { v: s.n ? s.k / s.n : 0, lo, hi, n: s.n, c, label,
              tip: `<b>${label}</b><br>${fmtN(s.k)} prêmios em ${fmtN(s.n)} baús<br>Taxa ${s.n ? pct(s.k / s.n, 2) : '-'}<br>IC 95%: ${pct(lo, 2)} a ${pct(hi, 2)}` };
   };
-  const bw = $('cWindow');
-  bars(bw, [mk(o, 'var(--s-out)', 'Fora da janela'), mk(w, 'var(--s-in)', 'Treasure Hour')], { h: 170 });
+  bars($('cWindow'), [mk(o, 'var(--s-out)', 'Fora da janela'), mk(w, 'var(--s-in)', 'Treasure Hour')], { h: 180 });
   let html;
   const NEED = 100;
   if (o.n < NEED || w.n < NEED) {
-    html = `<div class="verdict no">Poucos dados ainda: ${fmtN(w.n)} baús dentro e ${fmtN(o.n)} fora. Precisa de pelo menos ${NEED} em cada lado para começar a comparar (o ideal são milhares, porque prêmio raro é raro).</div>`;
+    html = `<div class="verdict no">Poucos dados ainda: ${fmtN(w.n)} baús dentro e ${fmtN(o.n)} fora da janela. Precisa de pelo menos ${NEED} em cada lado para comparar (o ideal são milhares, porque prêmio raro é raro).</div>`;
   } else {
     const t = twoProp(w.k, w.n, o.k, o.n), r1 = w.k / w.n, r0 = o.k / o.n;
     const ratio = r0 ? (r1 / r0).toFixed(2).replace('.', ',') + 'x' : 'n/d';
@@ -576,9 +729,8 @@ function renderWindow(side) {
       : `<div class="verdict no"><b>Nenhuma diferença comprovada até agora.</b> Dentro ${pct(r1, 2)}, fora ${pct(r0, 2)} (p ${pv}). Pode não existir efeito, ou faltam dados.</div>`;
   }
   $('vWindow').innerHTML = html;
-  const tiers = Object.keys(TIERS);
   $('tTier').innerHTML = `<tr><th>Tipo</th><th class="num">Fora</th><th class="num">Dentro</th></tr>` +
-    tiers.map(t => `<tr><td>${TIERS[t].label}</td><td class="num">${o.n ? pct((o.t[t] || 0) / o.n, 2) : '-'}</td><td class="num">${w.n ? pct((w.t[t] || 0) / w.n, 2) : '-'}</td></tr>`).join('') +
+    Object.keys(TIERS).map(t => `<tr><td>${TIERS[t].label}</td><td class="num">${o.n ? pct((o.t[t] || 0) / o.n, 2) : '-'}</td><td class="num">${w.n ? pct((w.t[t] || 0) / w.n, 2) : '-'}</td></tr>`).join('') +
     `<tr><td class="muted">Baús</td><td class="num muted">${fmtN(o.n)}</td><td class="num muted">${fmtN(w.n)}</td></tr>`;
 }
 
@@ -591,14 +743,13 @@ function renderTimeline(rows) {
     by.set(t, b);
   }
   const el = $('cTimeline');
-  if (!by.size) { el.innerHTML = '<p class="muted">Sem dados no período.</p>'; $('vTimeline').innerHTML = ''; return; }
+  if (!by.size) { el.innerHTML = '<p class="muted">Sem dados no período ainda. Seja o primeiro a registrar!</p>'; $('vTimeline').innerHTML = ''; return; }
   const ts = [...by.keys()].sort((a, b) => a - b);
-  const start = Math.max(ts[0], ts[ts.length - 1] - 71 * 3600e3); // até 72 barras
-  let base = { n: 0, k: 0 };
+  const start = Math.max(ts[0], ts[ts.length - 1] - 71 * 3600e3);
+  const base = { n: 0, k: 0 };
   for (const [, b] of by) if (!b.inw) { base.n += b.n; base.k += b.k; }
   const p0 = base.n ? base.k / base.n : 0;
-  const items = [], shades = [];
-  const flagged = [];
+  const items = [], shades = [], flagged = [];
   for (let t = start, i = 0; t <= ts[ts.length - 1]; t += 3600e3, i++) {
     const b = by.get(t) || { n: 0, k: 0, inw: windows.some(w => t >= +new Date(w.starts_at) && t < +new Date(w.ends_at)) };
     const [lo, hi] = wilson(b.k, b.n);
@@ -606,15 +757,14 @@ function renderTimeline(rows) {
     const flag = !b.inw && b.n >= 30 && z >= 3;
     if (flag) flagged.push(t);
     if (b.inw) shades.push({ from: i, to: i + 1 });
-    const d = new Date(t);
     items.push({ v: b.n ? b.k / b.n : 0, lo, hi, n: b.n, dim: b.n < 30, flag,
-      c: b.inw ? 'var(--s-in)' : 'var(--s-out)', label: hourBRT(d) + 'h',
-      tip: `<b>${fmtDT(d)}</b>${b.inw ? ' · janela anunciada' : ''}<br>${fmtN(b.k)} prêmios em ${fmtN(b.n)} baús<br>Taxa ${b.n ? pct(b.k / b.n, 2) : '-'}${flag ? '<br><b>Muito acima do normal</b>' : ''}` });
+      c: b.inw ? 'var(--s-in)' : 'var(--s-out)', label: hourBRT(t) + 'h',
+      tip: `<b>${fmtDT(t)}</b>${b.inw ? ' · janela anunciada' : ''}<br>${fmtN(b.k)} prêmios em ${fmtN(b.n)} baús<br>Taxa ${b.n ? pct(b.k / b.n, 2) : '-'}${flag ? '<br><b>Muito acima do normal</b>' : ''}` });
   }
-  bars(el, items, { h: 180, labelEvery: Math.ceil(items.length / 12), shades });
+  bars(el, items, { h: 190, labelEvery: Math.ceil(items.length / 12), shades });
   $('vTimeline').innerHTML = flagged.length
-    ? `<div class="verdict yes"><b>${flagged.length} hora(s) suspeita(s)</b> fora de janela anunciada: ${flagged.slice(-5).map(t => fmtDT(t)).join(', ')}. Vale cadastrar como janela se a Epic confirmar.</div>`
-    : `<p class="muted">Taxa de referência fora das janelas: ${base.n ? pct(p0, 2) : '-'} em ${fmtN(base.n)} baús.</p>`;
+    ? `<div class="verdict yes"><b>${flagged.length} hora(s) suspeita(s)</b> fora de janela anunciada: ${flagged.slice(-5).map(t => fmtDT(t)).join(', ')}.</div>`
+    : `<p class="muted" style="margin:6px 0 0">Taxa de referência fora das janelas: ${base.n ? pct(p0, 2) : '-'} em ${fmtN(base.n)} baús.</p>`;
 }
 
 function renderHourOfDay(rows) {
@@ -633,101 +783,77 @@ function renderPoi(rows) {
     const b = by[r.poi] ||= { n: 0, k: 0, tok: 0 };
     b.n += r.n; if (isHit(r.tier)) b.k += r.n; if (r.tier === 'token') b.tok += r.n;
   }
-  const list = Object.entries(by).map(([poi, b]) => ({ poi, ...b, ci: wilson(b.k, b.n) })).sort((a, b) => b.ci[0] - a.ci[0] || b.n - a.n);
-  $('tPoi').innerHTML = `<tr><th>#</th><th>Quadrante</th><th class="num">Baús</th><th class="num">Taxa</th><th class="num">IC 95%</th><th class="num">Tokens</th></tr>` +
-    (list.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.poi)}</td><td class="num">${fmtN(r.n)}</td><td class="num">${pct(r.k / r.n, 2)}</td>
-      <td class="num muted">${pct(r.ci[0], 1)} a ${pct(r.ci[1], 1)}</td><td class="num">${r.tok}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">Sem dados.</td></tr>');
+  const list = Object.entries(by).map(([poi, b]) => ({ poi, ...b, ci: wilson(b.k, b.n) }))
+    .sort((a, b) => b.ci[0] - a.ci[0] || b.n - a.n).slice(0, 12);
+  $('tPoi').innerHTML = `<tr><th>#</th><th>Quadrante</th><th class="num">Baús</th><th class="num">Taxa</th><th class="num">Lojas</th></tr>` +
+    (list.map((r, i) => `<tr class="${i === 0 ? 'top1' : ''}"><td>${i + 1}</td><td><b>${esc(r.poi)}</b></td><td class="num">${fmtN(r.n)}</td>
+      <td class="num" title="IC 95%: ${pct(r.ci[0], 1)} a ${pct(r.ci[1], 1)}">${pct(r.k / r.n, 1)}</td><td class="num">${r.tok}</td></tr>`).join('')
+     || '<tr><td colspan="5" class="muted">Sem dados ainda.</td></tr>');
 }
 
-function renderFeed(rows) {
+function renderFeed(newId) {
   const ul = $('feed');
   ul.innerHTML = '';
-  if (!rows.length) { ul.innerHTML = '<li class="muted">Nenhum ainda.</li>'; return; }
-  for (const r of rows) {
+  if (!feedRows.length) { ul.innerHTML = '<li class="muted">Nenhum prêmio raro registrado ainda.</li>'; return; }
+  for (const r of feedRows) {
     const li = document.createElement('li');
-    li.textContent = `${fmtDT(r.opened_at)} · ${r.nick || 'Anônimo'} · ${PRIZE_BY_KEY[r.prize]?.label || r.prize} em ${r.poi}`;
+    if (r.id === newId) li.className = 'new';
+    li.innerHTML = `<time>${fmtT(r.opened_at)}</time>${shapeSvg(TIER_MARK[r.tier], 14)}<span></span>`;
+    li.querySelector('span').textContent = `${r.nick || 'Anônimo'} · ${prizeLabel(r.prize)} em ${r.poi}`;
     ul.appendChild(li);
   }
 }
 
-// ---------- Heatmap ----------
-const hiddenTiers = new Set();
-const SHAPE_PATH = {
-  circle: '<circle cx="6" cy="6" r="4.5"/>', square: '<rect x="1.5" y="1.5" width="9" height="9"/>',
-  diamond: '<path d="M6 .8 11.2 6 6 11.2.8 6z"/>', triangle: '<path d="M6 1 11 10.5H1z"/>',
-  star: '<path d="M6 .5l1.6 3.6 3.9.4-2.9 2.6.8 3.9L6 9 2.6 11l.8-3.9L.5 4.5l3.9-.4z"/>',
-};
-const shapeSvg = m => `<svg width="12" height="12" viewBox="0 0 12 12" style="margin-right:6px;vertical-align:-1px" fill="${m.hex}" stroke="#111" stroke-width="1">${SHAPE_PATH[m.shape]}</svg>`;
-function buildTierFilter() {
-  $('tierFilter').innerHTML = Object.entries(TIER_MARK).map(([t, m]) =>
-    `<button data-t="${t}">${shapeSvg(m)}${TIERS[t].label} <span class="muted" data-c="${t}"></span></button>`).join('');
-  $('tierFilter').onclick = e => {
-    const b = e.target.closest('button'); if (!b) return;
-    const t = b.dataset.t;
-    hiddenTiers.has(t) ? hiddenTiers.delete(t) : hiddenTiers.add(t);
-    b.classList.toggle('off', hiddenTiers.has(t));
-    drawHeat();
-  };
-}
-async function loadPoints() {
-  if (!configured) return;
-  const { data, error } = await sb.from('chests').select('x,y,tier,prize,opened_at').neq('tier', 'nada').not('x', 'is', null).order('id', { ascending: false }).limit(5000);
-  if (error) return toast(error.message, null, true);
-  points = data; drawHeat();
-}
-function mark(ctx, shape, x, y, r) {
-  ctx.beginPath();
-  if (shape === 'circle') ctx.arc(x, y, r, 0, Math.PI * 2);
-  else if (shape === 'square') ctx.rect(x - r * .9, y - r * .9, r * 1.8, r * 1.8);
-  else if (shape === 'diamond') { ctx.moveTo(x, y - r * 1.2); ctx.lineTo(x + r * 1.2, y); ctx.lineTo(x, y + r * 1.2); ctx.lineTo(x - r * 1.2, y); }
-  else if (shape === 'triangle') { ctx.moveTo(x, y - r * 1.2); ctx.lineTo(x + r * 1.1, y + r * .8); ctx.lineTo(x - r * 1.1, y + r * .8); }
-  else { for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .6 : r * 1.5; ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); } }
-  ctx.closePath();
-  ctx.lineWidth = 2; ctx.strokeStyle = '#111'; ctx.stroke(); ctx.fill();
-}
-function drawHeat() {
-  const cv = $('heat'), r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
-  cv.width = r.width * dpr; cv.height = r.height * dpr;
-  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
-  const order = ['gizmo', 'cosmetico', 'veiculo', 'dourado', 'token']; // raros por cima
-  const counts = {};
-  const pts = points.filter(p => TIER_MARK[p.tier] && !hiddenTiers.has(p.tier))
-                    .sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
-  for (const p of points) counts[p.tier] = (counts[p.tier] || 0) + 1;
-  const rad = Math.max(4, r.width / 110);
-  for (const p of pts) {
-    const m = TIER_MARK[p.tier];
-    ctx.fillStyle = m.hex;
-    mark(ctx, m.shape, p.x * r.width, p.y * r.height, p.tier === 'token' ? rad * 1.4 : rad);
+// ---------- Ao vivo ----------
+function onNew(row, mine) {
+  if (points.some(p => p.id === row.id)) return;
+  if (row.tier !== 'nada' && row.x != null) { points.unshift(row); drawMap(); }
+  if (RARE.includes(row.tier) && !feedRows.some(f => f.id === row.id)) {
+    feedRows.unshift(row); feedRows = feedRows.slice(0, 12); renderFeed(row.id);
   }
-  document.querySelectorAll('#tierFilter [data-c]').forEach(el => el.textContent = counts[el.dataset.c] || 0);
-  $('heatInfo').textContent = `${fmtN(pts.length)} baús premiados no mapa (últimos 5.000).`;
+  if (row.tier === 'token' && !mine) toast(`${row.nick || 'Alguém'} achou o Acesso à Loja de Piratas em ${row.poi}!`, null, 'party');
+  scheduleStats();
 }
-addEventListener('resize', () => {
-  if ($('tab-mapa').classList.contains('on')) drawHeat();
-  if ($('tab-resultados').classList.contains('on') && hourly.length) renderResults();
-});
+function onRemoved({ id }) {
+  points = points.filter(p => p.id !== id); drawMap();
+  if (feedRows.some(f => f.id === id)) { feedRows = feedRows.filter(f => f.id !== id); renderFeed(); }
+  scheduleStats();
+}
+let isLive = false;
+function setLive(on) {
+  isLive = on;
+  $('live').className = 'live' + (on ? ' on' : '');
+  $('liveTxt').textContent = on ? 'ao vivo' : 'reconectando';
+}
+function connectLive() {
+  sb.channel('cacaobau')
+    .on('broadcast', { event: 'novo' }, ({ payload }) => onNew(payload))
+    .on('broadcast', { event: 'removido' }, ({ payload }) => onRemoved(payload))
+    .subscribe(status => setLive(status === 'SUBSCRIBED'));
+}
+// Rede de segurança: mesmo sem o canal ao vivo, tudo se atualiza sozinho
+setInterval(() => { loadStats(); loadPoints(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadStats(); loadPoints(); } });
+addEventListener('resize', () => { renderResults(); drawMap(); });
 
 // ---------- Admin (senha) ----------
-function openAdmin() {
-  $('navAdmin').style.display = '';
-  $('navAdmin').click();
-}
-async function unlockAdmin() {
+$('openAdmin').onclick = e => { e.preventDefault(); $('adminDlg').showModal(); loadAdmin(); };
+$('closeAdmin').onclick = () => $('adminDlg').close();
+$('unlockBtn').onclick = async () => {
   const k = $('adminKey').value;
   const { data } = await sb.rpc('admin_check', { p_key: k });
-  if (!data) return toast('Senha incorreta', null, true);
+  if (!data) return toast('Senha incorreta', null, 'err');
   adminKey = k; store.set('adminKey', k); $('adminKey').value = '';
   loadAdmin();
-}
-function lockAdmin() { adminKey = null; store.set('adminKey', null); loadAdmin(); }
+};
+$('lockBtn').onclick = () => { adminKey = null; store.set('adminKey', null); loadAdmin(); };
 const adm = async (fn, args) => {
   const { data, error } = await sb.rpc(fn, { p_key: adminKey, ...args });
-  if (error) { toast(error.message, null, true); throw error; }
+  if (error) { toast(error.message, null, 'err'); throw error; }
   return data;
 };
 async function loadAdmin() {
-  const ok = !!adminKey && configured && (await sb.rpc('admin_check', { p_key: adminKey })).data;
+  const ok = !!adminKey && (await sb.rpc('admin_check', { p_key: adminKey })).data;
   $('adminLock').style.display = ok ? 'none' : '';
   $('adminArea').style.display = ok ? '' : 'none';
   if (!ok) return;
@@ -736,38 +862,38 @@ async function loadAdmin() {
     adm('admin_recent', {}),
   ]);
   $('wins').innerHTML = (w || []).map(x => `<tr><td>${esc(x.label)}</td><td>${fmtDT(x.starts_at)} a ${fmtDT(x.ends_at)}</td>
-    <td class="num"><button class="danger" data-w="${x.id}">✕</button></td></tr>`).join('') || '<tr><td class="muted">Nenhuma janela.</td></tr>';
+    <td class="num"><button class="btn small danger" data-w="${x.id}">✕</button></td></tr>`).join('') || '<tr><td class="muted">Nenhuma janela.</td></tr>';
   $('wins').onclick = async e => {
     const b = e.target.closest('button[data-w]'); if (!b) return;
-    await adm('admin_delete_window', { p_id: +b.dataset.w }); lastLoad = 0; loadAdmin();
+    await adm('admin_delete_window', { p_id: +b.dataset.w }); loadAdmin(); loadStats();
   };
-  $('adminFeed').innerHTML = (f || []).map(r => `<tr><td>${fmtDT(r.opened_at)}</td><td>${esc(r.nick || 'Anônimo')}<br><span class="muted">${esc(r.device)}</span></td><td>${esc(PRIZE_BY_KEY[r.prize]?.label || r.prize)}<br><span class="muted">${esc(r.poi)}</span></td>
-    <td class="num"><button class="danger" data-d="${r.id}">Apagar</button> <button class="danger" data-b="${r.id}">Apagar aparelho</button></td></tr>`).join('') || '<tr><td class="muted">Nenhum registro.</td></tr>';
+  $('adminFeed').innerHTML = (f || []).map(r => `<tr><td>${fmtDT(r.opened_at)}</td><td>${esc(r.nick || 'Anônimo')}<br><span class="muted">${esc(r.device)}</span></td>
+    <td>${esc(prizeLabel(r.prize))}<br><span class="muted">${esc(r.poi)}</span></td>
+    <td class="num"><button class="btn small danger" data-d="${r.id}">Apagar</button><br><button class="btn small danger" data-b="${r.id}" style="margin-top:4px">Apagar aparelho</button></td></tr>`).join('')
+    || '<tr><td class="muted">Nenhum registro.</td></tr>';
   $('adminFeed').onclick = async e => {
     const d = e.target.closest('button[data-d]'), b = e.target.closest('button[data-b]');
     if (d) { await adm('admin_delete_chest', { p_id: +d.dataset.d }); loadAdmin(); }
     if (b && confirm('Apagar TODOS os registros desse aparelho?')) {
-      const n = await adm('admin_delete_device', { p_id: +b.dataset.b }); toast(`${n} registros apagados`); loadAdmin();
+      const n = await adm('admin_delete_device', { p_id: +b.dataset.b }); toast(`${n} registros apagados`); loadAdmin(); loadStats(); loadPoints();
     }
   };
 }
-async function addWindow() {
+$('addWin').onclick = async () => {
   const s = $('wStart').value, e = $('wEnd').value;
-  if (!s || !e) return toast('Preencha início e fim', null, true);
+  if (!s || !e) return toast('Preencha início e fim', null, 'err');
   await adm('admin_add_window', { p_label: $('wLabel').value, p_start: new Date(s).toISOString(), p_end: new Date(e).toISOString() });
-  $('wLabel').value = $('wStart').value = $('wEnd').value = ''; lastLoad = 0; loadAdmin(); toast('Janela adicionada');
-}
+  $('wLabel').value = $('wStart').value = $('wEnd').value = ''; loadAdmin(); loadStats(); toast('Janela adicionada');
+};
 
 // ---------- Início ----------
-buildForm();
-mountMap($('heatMap'));
 buildTierFilter();
-if (configured) {
-  loadMine();
-  if (adminKey) $('navAdmin').style.display = '';
-} else {
-  toast('Modo sem banco: configure o Supabase no topo do script', null, true);
-}
+buildForm();
+mountMap();
+loadPoints();
+loadStats();
+loadMine();
+connectLive();
 </script>
 </body>
 </html>
