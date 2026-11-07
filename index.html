@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caça ao Baú · Rastreador comunitário</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 10h18v9H3z' fill='%238a5a2b'/%3E%3Cpath d='M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5z' fill='%23a8703a'/%3E%3Crect x='3' y='9' width='18' height='2' fill='%23e0a526'/%3E%3Crect x='10' y='9' width='4' height='5' fill='%23e0a526'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #121211; --surface-1: #1a1a19; --surface-2: #242422; --line: #383835;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
+    --s-out: #3987e5; --s-in: #d95926; --gold: #e0a526;
+    --t-nada: #6b6a65; --t-gizmo: #199e70; --t-cosmetico: #9085e9;
+    --t-veiculo: #3987e5; --t-dourado: #c98500; --t-token: #d55181;
+    --good: #0ca30c; --critical: #d03b3b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text-primary);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--surface-1);
+           border-bottom: 1px solid var(--line); padding: 10px 14px;
+           display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 17px; margin: 0; flex: 1; }
+  header h1 span { color: var(--gold); }
+  nav { display: flex; gap: 4px; padding: 8px 14px; background: var(--surface-1);
+        border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav button { flex: 1; min-width: 84px; }
+  nav button.on { background: var(--gold); color: #111; border-color: var(--gold); }
+  main { max-width: 860px; margin: 0 auto; padding: 14px; }
+  section.tab { display: none; } section.tab.on { display: block; }
+  .card { background: var(--surface-1); border: 1px solid var(--line);
+          border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .card h2 { font-size: 16px; margin: 0 0 10px; }
+  .muted { color: var(--text-muted); font-size: 13px; }
+  .sec { color: var(--text-secondary); }
+  button, select, input { font: inherit; color: var(--text-primary); background: var(--surface-2);
+          border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  button { cursor: pointer; } button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: var(--gold); color: #111; border-color: var(--gold); font-weight: 600; }
+  button.danger { color: #ff8a8a; }
+  label.field { display: block; margin-bottom: 10px; }
+  label.field > span { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+  select, input[type=datetime-local], input[type=text], input[type=password] { width: 100%; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button.on { border-color: var(--gold); color: var(--gold); }
+  .prizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .prize { text-align: left; border-left: 4px solid var(--c, var(--line)); padding: 10px; min-height: 56px; }
+  .prize small { display: block; color: var(--text-muted); font-size: 12px; }
+  .prize.big { grid-column: 1 / -1; min-height: 64px; font-size: 17px; font-weight: 600; text-align: center; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .kpi { background: var(--surface-2); border-radius: 10px; padding: 10px; }
+  .kpi b { display: block; font-size: 24px; }
+  .kpi span { font-size: 12px; color: var(--text-secondary); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  th { color: var(--text-secondary); font-weight: 500; font-size: 12px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .verdict { padding: 10px; border-radius: 8px; background: var(--surface-2); margin-top: 10px; }
+  .verdict.yes { border-left: 4px solid var(--good); }
+  .verdict.no { border-left: 4px solid var(--text-muted); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); margin: 6px 0; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart text { fill: var(--text-muted); font-size: 11px; }
+  #tip { position: fixed; pointer-events: none; z-index: 20; background: #000d; border: 1px solid var(--line);
+         border-radius: 8px; padding: 6px 8px; font-size: 12px; max-width: 240px; display: none; }
+  .mapwrap { position: relative; width: 100%; aspect-ratio: 1; background: #0e1a24; border-radius: 10px;
+             overflow: hidden; touch-action: manipulation; }
+  .mapwrap img, .mapwrap canvas, .mapwrap svg.grid { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mapwrap .pin { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+                  background: var(--gold); border: 3px solid #111; display: none; }
+  .mapwrap svg.overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .chips button.off { opacity: .4; text-decoration: line-through; }
+  .chips i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+  #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 30;
+           background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
+           display: none; gap: 12px; align-items: center; box-shadow: 0 6px 24px #0008;
+           width: min(92vw, 440px); justify-content: space-between; }
+  #toast.err { border-color: var(--critical); }
+  .feed li { margin-bottom: 4px; }
+  ul { padding-left: 18px; margin: 6px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="vertical-align:-4px;margin-right:6px"><path d="M3 10h18v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="#8a5a2b"/><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5z" fill="#a8703a"/><rect x="3" y="9.2" width="18" height="2" fill="#e0a526"/><rect x="10" y="9" width="4" height="5" rx="1" fill="#e0a526"/><circle cx="12" cy="11.6" r=".9" fill="#3a2410"/><path d="M7 5.6V20M17 5.6V20" stroke="#e0a526" stroke-width="1.2"/></svg>Caça ao <span>Baú</span> · Rastreador</h1>
+</header>
+<nav>
+  <button data-tab="registrar" class="on">Registrar</button>
+  <button data-tab="resultados">Resultados</button>
+  <button data-tab="mapa">Mapa</button>
+  <button data-tab="admin" id="navAdmin" style="display:none">Admin</button>
+</nav>
+
+<main>
+  <!-- ================= REGISTRAR ================= -->
+  <section class="tab on" id="tab-registrar">
+    <div id="regForm">
+      <div class="card">
+        <label class="field"><span>Seu apelido (opcional, aparece nos prêmios raros)</span><input type="text" id="nick" maxlength="24" placeholder="Anônimo"></label>
+        <div class="field"><span class="muted">Onde você está: toque no mapa</span>
+          <div class="mapwrap" id="pickMap" style="margin-top:4px"><div class="pin" id="pin"></div></div>
+          <p class="sec" id="cellInfo" style="margin:6px 0 0">Nenhum local marcado ainda.</p>
+        </div>
+        <div class="field"><span class="muted">Tipo do baú</span><div class="chips" id="types"></div></div>
+        <div class="field" style="margin-top:10px">
+          <div class="chips">
+            <button id="tNow" class="on">Agora</button>
+            <button id="tOther">Outro horário</button>
+          </div>
+          <input type="datetime-local" id="when" style="display:none;margin-top:6px">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>O que saiu do baú?</h2>
+        <p class="muted">Registre também os baús sem prêmio. Sem eles não dá para calcular nenhuma taxa.</p>
+        <div class="prizes" id="prizes"></div>
+        <label class="muted" style="display:block;margin-top:10px">
+          <input type="checkbox" id="allWeeks"> mostrar prêmios de todas as semanas
+        </label>
+      </div>
+
+      <div class="card">
+        <h2>Seus últimos registros <span class="muted" id="sessCount"></span></h2>
+        <table><tbody id="mine"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RESULTADOS ================= -->
+  <section class="tab" id="tab-resultados">
+    <div class="card">
+      <div class="row">
+        <label class="field"><span>Período</span>
+          <select id="fPeriod"><option value="all">Tudo</option><option value="24">Últimas 24h</option><option value="168">Últimos 7 dias</option></select></label>
+        <label class="field"><span>Conta como "prêmio"</span>
+          <select id="fMetric"><option value="any">Qualquer prêmio (inclui gizmos)</option><option value="rare">Só raros (veículo, dourado, token)</option><option value="token">Só Acesso à Loja de Piratas</option></select></label>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <p class="muted" id="updated"></p>
+    </div>
+
+    <div class="card">
+      <h2>A Treasure Hour muda a chance?</h2>
+      <div class="legend"><span><i style="background:var(--s-out)"></i>Fora da janela</span><span><i style="background:var(--s-in)"></i>Dentro da Treasure Hour</span></div>
+      <div class="chart" id="cWindow"></div>
+      <div id="vWindow"></div>
+      <details style="margin-top:8px"><summary class="muted">Ver por tipo de prêmio</summary><table id="tTier"></table></details>
+    </div>
+
+    <div class="card">
+      <h2>Linha do tempo (por hora)</h2>
+      <p class="muted">Faixa laranja = janela anunciada. Barra com ▲ = taxa muito acima do normal fora de janela anunciada (possível Power Hour escondida).</p>
+      <div class="chart" id="cTimeline"></div>
+      <div id="vTimeline"></div>
+    </div>
+
+    <div class="card">
+      <h2>Taxa por hora do dia (Brasília)</h2>
+      <p class="muted">Junta todos os dias. Barras apagadas têm menos de 30 baús e não valem como evidência.</p>
+      <div class="chart" id="cHour"></div>
+    </div>
+
+    <div class="card">
+      <h2>Efetividade por quadrante</h2>
+      <p class="muted">Ranking pelo "piso" do intervalo de confiança: um quadrante com 3 baús e 1 prêmio não passa na frente de um com 500 baús e taxa boa. Letras = colunas, números = linhas, igual à grade do mapa do jogo.</p>
+      <table id="tPoi"></table>
+    </div>
+
+    <div class="card">
+      <h2>Últimos prêmios raros</h2>
+      <ul class="feed" id="feed"></ul>
+      <p class="muted">Dados autodeclarados pela comunidade. Quem só registra quando ganha infla as taxas; o admin pode remover registros suspeitos.</p>
+    </div>
+  </section>
+
+  <!-- ================= MAPA ================= -->
+  <section class="tab" id="tab-mapa">
+    <div class="card">
+      <h2>Onde saíram prêmios</h2>
+      <p class="muted">Toque num tipo para esconder ou mostrar.</p>
+      <div class="chips" id="tierFilter"></div>
+      <div class="mapwrap" id="heatMap" style="margin-top:10px"><canvas id="heat"></canvas></div>
+      <p class="muted" id="heatInfo"></p>
+    </div>
+  </section>
+
+  <!-- ================= ADMIN ================= -->
+  <section class="tab" id="tab-admin">
+    <div class="card" id="adminLock">
+      <h2>Área do admin</h2>
+      <div class="row"><input type="password" id="adminKey" placeholder="Senha de admin"><button class="primary" onclick="unlockAdmin()" style="flex:0">Entrar</button></div>
+    </div>
+    <div id="adminArea" style="display:none">
+    <div class="card">
+      <h2>Janelas de Treasure Hour / Power Hour</h2>
+      <table><tbody id="wins"></tbody></table>
+      <div class="row" style="margin-top:10px">
+        <input type="text" id="wLabel" placeholder="Nome (ex.: Treasure Hour 14/11)">
+      </div>
+      <div class="row" style="margin-top:6px">
+        <label class="field"><span>Início (seu horário)</span><input type="datetime-local" id="wStart"></label>
+        <label class="field"><span>Fim</span><input type="datetime-local" id="wEnd"></label>
+      </div>
+      <button class="primary" onclick="addWindow()">Adicionar janela</button>
+    </div>
+    <div class="card">
+      <h2>Registros recentes</h2>
+      <table><tbody id="adminFeed"></tbody></table>
+    </div>
+    <button onclick="lockAdmin()">Sair do admin</button>
+    </div>
+  </section>
+</main>
+
+<footer class="muted" style="text-align:center;padding:10px 14px 70px">Site de fã, sem fins lucrativos e não oficial. Não é afiliado nem endossado pela Epic Games. Fortnite e o mapa são marcas e conteúdo da Epic Games, Inc. · <a href="#" onclick="openAdmin();return false" style="color:inherit">admin</a></footer>
+<div id="tip"></div>
+<div id="toast"><span id="toastMsg"></span><button id="toastUndo" style="display:none">Desfazer</button></div>
+
+<script>
+// =====================================================================
+// CONFIGURAÇÃO: troque pelos dados do seu projeto Supabase
+// (Project Settings > API > Project URL e anon public key)
+// =====================================================================
+const SUPABASE_URL = 'https://fvbhsnruirpervpttxvz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_JhGggS8LYxl80-iP-ZiBAg_dYPSs2Gc'; // chave pública, pode ficar no site
+const TZ = 'America/Sao_Paulo';
+
+const COLS = 'ABCDEFGHIJ';
+const cellOf = (x, y) => COLS[Math.min(9, Math.floor(x * 10))] + (Math.min(9, Math.floor(y * 10)) + 1);
+
+const CHEST_TYPES = [['normal','Normal'],['raro','Raro'],['enterrado','Enterrado'],['sprite','Sprite'],['cofre','Cofre (vault)']];
+
+const TIERS = {
+  nada:      { label: 'Sem prêmio',         color: 'var(--t-nada)' },
+  gizmo:     { label: 'Gizmo',              color: 'var(--t-gizmo)' },
+  cosmetico: { label: 'Cosmético',          color: 'var(--t-cosmetico)' },
+  veiculo:   { label: 'Veículo dourado',    color: 'var(--t-veiculo)' },
+  dourado:   { label: 'Skin/item dourado',  color: '#e0a526' },
+  token:     { label: 'Loja de Piratas',    color: '#e8578f' },
+};
+const RARE = ['veiculo','dourado','token'];
+// Cor + formato por tipo (o formato ajuda quem não distingue bem as cores)
+const TIER_MARK = {
+  gizmo:     { hex: '#199e70', shape: 'circle' },
+  cosmetico: { hex: '#9085e9', shape: 'triangle' },
+  veiculo:   { hex: '#3987e5', shape: 'square' },
+  dourado:   { hex: '#e0a526', shape: 'diamond' },
+  token:     { hex: '#e8578f', shape: 'star' },
+};
+
+// Prêmios por semana (lista não oficial, de sites de guia). Edite quando a Epic trocar.
+// from = início da semana no horário de Brasília. Sem "from" = vale sempre.
+const PRIZES = [
+  { key:'token',        label:'Acesso à Loja de Piratas', tier:'token' },
+  { key:'acelerador',   label:'Extraction Accelerator',   tier:'gizmo' },
+  { key:'extrator',     label:'Portable Extractor',       tier:'gizmo' },
+  { key:'fogos',        label:'Golden Firework',          tier:'gizmo' },
+  { key:'loc_sprite',   label:'Sprite Locator',           tier:'gizmo' },
+  { key:'loc_lucky',    label:'Lucky Locator',            tier:'gizmo' },
+  // Semana 1
+  { key:'asap_skin',    label:'Solid Gold A$AP Rocky',    tier:'dourado',   from:'2026-11-01', to:'2026-11-07' },
+  { key:'asap_pick',    label:"Gauntlets do A$AP (picareta)", tier:'dourado', from:'2026-11-01', to:'2026-11-07' },
+  { key:'gwagon',       label:'Mercedes-AMG G 63',        tier:'veiculo',   from:'2026-11-01', to:'2026-11-07' },
+  { key:'plunder_ls',   label:'Plunder in Paradise (tela)', tier:'cosmetico', from:'2026-11-01', to:'2026-11-07' },
+  { key:'llama_decal',  label:'Golden Llama Crew (decal)', tier:'cosmetico', from:'2026-11-01', to:'2026-11-07' },
+  // Semana 2
+  { key:'uzi_skin',     label:"Solid Gold Lil' Uzi Vert", tier:'dourado',   from:'2026-11-07' },
+  { key:'uzi_bling',    label:"Lil' Uzi Crew (mochila)",  tier:'cosmetico', from:'2026-11-07' },
+  { key:'cadillac',     label:'Cadillac CT5-V Blackwing', tier:'veiculo',   from:'2026-11-07' },
+  { key:'kawaii_ls',    label:'So Kawaii (tela)',         tier:'cosmetico', from:'2026-11-07' },
+  { key:'london_jam',   label:'London (Jam Track)',       tier:'cosmetico', from:'2026-11-07' },
+  { key:'outro',        label:'Outro prêmio especial',    tier:'cosmetico' },
+];
+const PRIZE_BY_KEY = Object.fromEntries(PRIZES.map(p => [p.key, p]));
+PRIZE_BY_KEY.nada = { key:'nada', label:'Sem prêmio', tier:'nada' };
+
+// =====================================================================
+const configured = !SUPABASE_URL.includes('SEU-PROJETO');
+const sb = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = (x, d = 1) => (x * 100).toFixed(d).replace('.', ',') + '%';
+const fmtN = n => n.toLocaleString('pt-BR');
+const fmtDT = d => new Date(d).toLocaleString('pt-BR', { timeZone: TZ, day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+const hourBRT = d => +new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' }).format(new Date(d));
+const store = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+                set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+
+const DEVICE = (() => { let d = store.get('device'); if (!d) { d = crypto.randomUUID(); store.set('device', d); } return d; })();
+let adminKey = store.get('adminKey', null), chestType = 'normal', pickPoint = null, sessionCount = 0;
+let hourly = [], windows = [], points = [];
+
+// ---------- Estatística ----------
+function wilson(k, n, z = 1.96) {
+  if (!n) return [0, 0];
+  const p = k / n, d = 1 + z*z/n, c = p + z*z/(2*n), m = z * Math.sqrt(p*(1-p)/n + z*z/(4*n*n));
+  return [Math.max(0, (c - m) / d), Math.min(1, (c + m) / d)];
+}
+function phi(x) { // CDF normal padrão
+  const t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989423 * Math.exp(-x*x/2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - p : p;
+}
+function twoProp(k1, n1, k2, n2) {
+  const p = (k1 + k2) / (n1 + n2), se = Math.sqrt(p * (1 - p) * (1/n1 + 1/n2));
+  if (!se) return { z: 0, p: 1 };
+  const z = (k1/n1 - k2/n2) / se;
+  return { z, p: 2 * (1 - phi(Math.abs(z))) };
+}
+const isHit = tier => {
+  const m = $('fMetric').value;
+  return m === 'any' ? tier !== 'nada' : m === 'rare' ? RARE.includes(tier) : tier === 'token';
+};
+
+// ---------- UI helpers ----------
+let toastTimer;
+function toast(msg, undo, err) {
+  $('toastMsg').textContent = msg;
+  $('toast').className = err ? 'err' : '';
+  $('toast').style.display = 'flex';
+  $('toastUndo').style.display = undo ? '' : 'none';
+  $('toastUndo').onclick = async () => { $('toast').style.display = 'none'; await undo(); };
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').style.display = 'none', undo ? 6000 : 3500);
+}
+function tipAt(e, html) {
+  const t = $('tip'); t.innerHTML = html; t.style.display = 'block';
+  const x = Math.min(e.clientX + 12, innerWidth - t.offsetWidth - 8);
+  t.style.left = x + 'px'; t.style.top = (e.clientY - t.offsetHeight - 12) + 'px';
+}
+const hideTip = () => $('tip').style.display = 'none';
+document.addEventListener('scroll', hideTip, true);
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + b.dataset.tab));
+  if (b.dataset.tab === 'resultados') loadResults();
+  if (b.dataset.tab === 'mapa') loadPoints();
+  if (b.dataset.tab === 'admin') loadAdmin();
+});
+
+// ---------- Mapa ----------
+// Ordem: map.png na mesma pasta (se você quiser fixar uma imagem) > mapa oficial atual via fortnite-api.com > grade.
+let mapUrlPromise;
+function mapUrl() {
+  return mapUrlPromise ||= (async () => {
+    if (await canLoad('map.png')) return 'map.png';
+    try {
+      const r = await fetch('https://fortnite-api.com/v1/map?language=pt-BR');
+      const j = await r.json();
+      const u = j?.data?.images?.pois || j?.data?.images?.blank;
+      if (u && await canLoad(u)) return u;
+    } catch {}
+    return null;
+  })();
+}
+function canLoad(src) {
+  return new Promise(res => { const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
+}
+function gridOverlay(wrap) {
+  let g = '<svg class="overlay" viewBox="0 0 100 100" preserveAspectRatio="none">';
+  for (let i = 1; i < 10; i++) g += `<line x1="${i*10}" y1="0" x2="${i*10}" y2="100" stroke="#fff" stroke-opacity=".25" stroke-width=".25"/><line x1="0" y1="${i*10}" x2="100" y2="${i*10}" stroke="#fff" stroke-opacity=".25" stroke-width=".25"/>`;
+  for (let i = 0; i < 10; i++) g += `<text x="${i*10+5}" y="3.6" text-anchor="middle" font-size="2.8" fill="#fff" fill-opacity=".8" stroke="#000" stroke-width=".4" paint-order="stroke">${COLS[i]}</text><text x="1.2" y="${i*10+5.8}" font-size="2.8" fill="#fff" fill-opacity=".8" stroke="#000" stroke-width=".4" paint-order="stroke">${i+1}</text>`;
+  wrap.insertAdjacentHTML('beforeend', g + '</svg>');
+}
+async function mountMap(wrap) {
+  gridOverlay(wrap);
+  const src = await mapUrl();
+  if (src) {
+    const img = new Image(); img.src = src; img.alt = 'Mapa atual da ilha';
+    wrap.prepend(img);
+    return;
+  }
+  wrap.insertAdjacentHTML('afterbegin', '<svg class="grid" viewBox="0 0 100 100"><text x="50" y="52" text-anchor="middle" font-size="3.2" fill="#6b7d8c">Mapa indisponível: coloque map.png na pasta do site</text></svg>');
+}
+
+// ---------- Registrar ----------
+function buildForm() {
+  $('nick').value = store.get('nick', '');
+  $('nick').onchange = () => store.set('nick', $('nick').value.trim().slice(0, 24));
+  $('types').innerHTML = CHEST_TYPES.map(([k, l]) => `<button data-k="${k}" class="${k === 'normal' ? 'on' : ''}">${l}</button>`).join('');
+  $('types').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    chestType = b.dataset.k;
+    [...$('types').children].forEach(x => x.classList.toggle('on', x === b));
+  };
+  $('tNow').onclick = () => { $('tNow').classList.add('on'); $('tOther').classList.remove('on'); $('when').style.display = 'none'; };
+  $('tOther').onclick = () => {
+    $('tOther').classList.add('on'); $('tNow').classList.remove('on'); $('when').style.display = '';
+    if (!$('when').value) $('when').value = toLocalInput(new Date());
+  };
+  $('allWeeks').onchange = renderPrizes;
+  $('when').onchange = renderPrizes;
+  mountMap($('pickMap'));
+  $('pickMap').onclick = e => {
+    const r = $('pickMap').getBoundingClientRect();
+    setPoint({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+  };
+  const saved = store.get('point', null);
+  if (saved) setPoint(saved);
+  renderPrizes();
+}
+// O ponto continua marcado entre registros: quem abre vários baús no mesmo lugar só toca de novo quando mudar de área.
+function setPoint(pt) {
+  pickPoint = { x: Math.min(1, Math.max(0, pt.x)), y: Math.min(1, Math.max(0, pt.y)) };
+  store.set('point', pickPoint);
+  Object.assign($('pin').style, { display: 'block', left: pickPoint.x * 100 + '%', top: pickPoint.y * 100 + '%' });
+  $('cellInfo').innerHTML = `Local: <b>${cellOf(pickPoint.x, pickPoint.y)}</b> · toque em outro ponto quando mudar de área`;
+}
+function toLocalInput(d) { const z = new Date(d - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); }
+function openedAt() { return $('tOther').classList.contains('on') && $('when').value ? new Date($('when').value) : new Date(); }
+
+function renderPrizes() {
+  const day = openedAt().toLocaleDateString('sv-SE', { timeZone: TZ }); // yyyy-mm-dd
+  const all = $('allWeeks').checked;
+  const list = PRIZES.filter(p => all || ((!p.from || day >= p.from) && (!p.to || day < p.to)));
+  const order = ['token','dourado','veiculo','cosmetico','gizmo'];
+  list.sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
+  $('prizes').innerHTML =
+    `<button class="prize big" data-k="nada" style="--c:var(--t-nada)">Sem prêmio (só loot normal)</button>` +
+    list.map(p => `<button class="prize" data-k="${p.key}" style="--c:${TIERS[p.tier].color}">${esc(p.label)}<small>${TIERS[p.tier].label}</small></button>`).join('');
+  $('prizes').onclick = e => { const b = e.target.closest('button'); if (b) save(b.dataset.k, b); };
+}
+
+let saving = false;
+async function save(key, btn) {
+  if (saving) return;
+  if (!pickPoint) { toast('Toque no mapa para marcar onde abriu o baú', null, true); $('pickMap').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  saving = true; btn.disabled = true;
+  const p = PRIZE_BY_KEY[key];
+  const row = { device_id: DEVICE, nick: $('nick').value.trim().slice(0, 24) || null, poi: cellOf(pickPoint.x, pickPoint.y), chest_type: chestType, prize: p.key, tier: p.tier,
+                opened_at: openedAt().toISOString(), x: pickPoint.x, y: pickPoint.y };
+  const { data, error } = await sb.from('chests').insert(row).select('id').single();
+  saving = false; btn.disabled = false;
+  if (error) return toast(error.message, null, true);
+  sessionCount++;
+  toast(`Salvo: ${p.label} · ${row.poi}`, async () => { await sb.rpc('delete_my_chest', { p_id: data.id, p_device: DEVICE }); sessionCount--; loadMine(); toast('Registro removido'); });
+  loadMine();
+}
+
+async function loadMine() {
+  if (!configured) return;
+  const { data } = await sb.rpc('my_chests', { p_device: DEVICE });
+  $('sessCount').textContent = sessionCount ? `· ${sessionCount} nesta sessão` : '';
+  $('mine').innerHTML = (data || []).map(r => `<tr><td>${fmtDT(r.opened_at)}</td><td>${esc(r.poi)}</td>
+    <td>${esc(PRIZE_BY_KEY[r.prize]?.label || r.prize)}</td><td class="num"><button class="danger" data-id="${r.id}" aria-label="Apagar">✕</button></td></tr>`).join('')
+    || '<tr><td class="muted">Nenhum registro ainda.</td></tr>';
+  $('mine').onclick = async e => {
+    const b = e.target.closest('button[data-id]'); if (!b) return;
+    await sb.rpc('delete_my_chest', { p_id: +b.dataset.id, p_device: DEVICE }); loadMine();
+  };
+}
+
+// ---------- Carregar dados agregados ----------
+async function fetchAll(table, cols, order) {
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.from(table).select(cols).order(order).range(from, from + 999);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < 1000) return out;
+  }
+}
+
+let lastLoad = 0;
+async function loadResults(force) {
+  if (!configured) { $('kpis').innerHTML = '<p class="muted">Configure o Supabase no index.html.</p>'; return; }
+  if (!force && Date.now() - lastLoad < 30000 && hourly.length) return renderResults();
+  try {
+    const [h, w, tot, feed] = await Promise.all([
+      fetchAll('chest_hourly', 'hour_utc,in_window,poi,tier,n', 'hour_utc'),
+      sb.from('event_windows').select('*').order('starts_at'),
+      sb.rpc('chest_totals'),
+      sb.from('chests').select('opened_at,poi,prize,tier,nick').in('tier', RARE).order('id', { ascending: false }).limit(10),
+    ]);
+    hourly = h; windows = w.data || []; lastLoad = Date.now();
+    renderResults((tot.data || [])[0]);
+    renderFeed(feed.data || []);
+  } catch (e) { toast('Erro ao carregar: ' + e.message, null, true); }
+}
+$('fPeriod').onchange = () => renderResults();
+$('fMetric').onchange = () => renderResults();
+setInterval(() => { if ($('tab-resultados').classList.contains('on')) loadResults(true); }, 60000);
+
+function filtered() {
+  const hrs = $('fPeriod').value;
+  if (hrs === 'all') return hourly;
+  const min = Date.now() - hrs * 3600e3;
+  return hourly.filter(r => new Date(r.hour_utc) >= min);
+}
+
+let totalsCache;
+function renderResults(tot) {
+  if (tot) totalsCache = tot;
+  const rows = filtered();
+  let n = 0, k = 0, tokens = 0;
+  const side = { true: { n: 0, k: 0, t: {} }, false: { n: 0, k: 0, t: {} } };
+  for (const r of rows) {
+    const s = side[r.in_window];
+    n += r.n; s.n += r.n; s.t[r.tier] = (s.t[r.tier] || 0) + r.n;
+    if (isHit(r.tier)) { k += r.n; s.k += r.n; }
+    if (r.tier === 'token') tokens += r.n;
+  }
+  $('kpis').innerHTML = [
+    [fmtN(n), 'baús no período'], [fmtN(totalsCache?.players ?? 0), 'aparelhos (total)'],
+    [n ? pct(k / n) : '0%', 'taxa de prêmio'], [fmtN(tokens), 'tokens da Loja'],
+  ].map(([b, s]) => `<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join('');
+  $('updated').textContent = lastLoad ? 'Atualizado ' + new Date(lastLoad).toLocaleTimeString('pt-BR') + ' · atualiza sozinho a cada minuto' : '';
+  renderWindow(side);
+  renderTimeline(rows);
+  renderHourOfDay(rows);
+  renderPoi(rows);
+}
+
+// ---------- Gráfico de barras genérico (SVG) ----------
+function bars(el, items, { h = 160, max, labelEvery = 1, shades = [] } = {}) {
+  const W = Math.max(300, el.clientWidth || 600), pad = { l: 34, r: 6, t: 8, b: 22 }, iw = W - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const raw = max ?? Math.max(0.001, ...items.map(i => i.hi ?? i.v));
+  const step = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.25].find(st => raw / st <= 4) || 0.25;
+  const top = Math.ceil(raw / step) * step, nGrid = Math.round(top / step);
+  const bw = iw / Math.max(1, items.length), gap = Math.min(2, bw * 0.2);
+  const y = v => pad.t + ih - (v / top) * ih;
+  let s = `<svg viewBox="0 0 ${W} ${h}" role="img">`;
+  for (const sh of shades) s += `<rect x="${pad.l + sh.from * bw}" y="${pad.t}" width="${(sh.to - sh.from) * bw}" height="${ih}" fill="var(--s-in)" opacity=".14"/>`;
+  for (let g = 0; g <= nGrid; g++) {
+    const v = step * g;
+    s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>`;
+    s += `<text x="${pad.l - 4}" y="${y(v) + 4}" text-anchor="end">${pct(v, step < 0.01 ? 1 : 0)}</text>`;
+  }
+  items.forEach((it, i) => {
+    const x = pad.l + i * bw + gap / 2, w = Math.max(1, bw - gap), yy = y(it.v), hh = pad.t + ih - yy;
+    s += `<g data-i="${i}"><rect x="${pad.l + i * bw}" y="${pad.t}" width="${bw}" height="${ih}" fill="transparent"/>`;
+    if (hh > 0) s += `<path d="M${x},${pad.t + ih}V${yy + Math.min(4, hh)}q0,-${Math.min(4, hh)} ${Math.min(4, w / 2)},-${Math.min(4, hh)}H${x + w - Math.min(4, w / 2)}q${Math.min(4, w / 2)},0 ${Math.min(4, w / 2)},${Math.min(4, hh)}V${pad.t + ih}Z" fill="${it.c}" opacity="${it.dim ? 0.3 : 1}"/>`;
+    if (it.hi != null && !it.dim && it.n) s += `<line x1="${x + w / 2}" x2="${x + w / 2}" y1="${y(it.lo)}" y2="${y(it.hi)}" stroke="var(--text-secondary)" stroke-width="1.5"/>`;
+    if (it.flag) s += `<text x="${x + w / 2}" y="${Math.max(10, y(it.hi ?? it.v) - 4)}" text-anchor="middle" style="fill:var(--gold);font-size:12px">▲</text>`;
+    if (i % labelEvery === 0) s += `<text x="${x + w / 2}" y="${h - 6}" text-anchor="middle">${esc(it.label)}</text>`;
+    s += '</g>';
+  });
+  s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${pad.t + ih}" y2="${pad.t + ih}" stroke="var(--text-muted)"/></svg>`;
+  el.innerHTML = s;
+  el.onmousemove = el.onclick = e => {
+    const g = e.target.closest('g[data-i]'); if (!g) return hideTip();
+    tipAt(e, items[+g.dataset.i].tip);
+  };
+  el.onmouseleave = hideTip;
+}
+
+function renderWindow(side) {
+  const o = side.false, w = side.true;
+  const mk = (s, c, label) => {
+    const [lo, hi] = wilson(s.k, s.n);
+    return { v: s.n ? s.k / s.n : 0, lo, hi, n: s.n, c, label,
+             tip: `<b>${label}</b><br>${fmtN(s.k)} prêmios em ${fmtN(s.n)} baús<br>Taxa ${s.n ? pct(s.k / s.n, 2) : '-'}<br>IC 95%: ${pct(lo, 2)} a ${pct(hi, 2)}` };
+  };
+  const bw = $('cWindow');
+  bars(bw, [mk(o, 'var(--s-out)', 'Fora da janela'), mk(w, 'var(--s-in)', 'Treasure Hour')], { h: 170 });
+  let html;
+  const NEED = 100;
+  if (o.n < NEED || w.n < NEED) {
+    html = `<div class="verdict no">Poucos dados ainda: ${fmtN(w.n)} baús dentro e ${fmtN(o.n)} fora. Precisa de pelo menos ${NEED} em cada lado para começar a comparar (o ideal são milhares, porque prêmio raro é raro).</div>`;
+  } else {
+    const t = twoProp(w.k, w.n, o.k, o.n), r1 = w.k / w.n, r0 = o.k / o.n;
+    const ratio = r0 ? (r1 / r0).toFixed(2).replace('.', ',') + 'x' : 'n/d';
+    const pv = t.p < 0.001 ? '< 0,001' : '= ' + t.p.toFixed(3).replace('.', ',');
+    html = t.p < 0.01 && r1 > r0
+      ? `<div class="verdict yes"><b>Diferença real.</b> Na Treasure Hour a taxa foi ${pct(r1, 2)} contra ${pct(r0, 2)} fora (${ratio}). Chance de ser só sorte: p ${pv}.</div>`
+      : t.p < 0.01
+      ? `<div class="verdict yes"><b>Diferença real, mas ao contrário:</b> a taxa caiu na janela (${pct(r1, 2)} contra ${pct(r0, 2)}). p ${pv}.</div>`
+      : `<div class="verdict no"><b>Nenhuma diferença comprovada até agora.</b> Dentro ${pct(r1, 2)}, fora ${pct(r0, 2)} (p ${pv}). Pode não existir efeito, ou faltam dados.</div>`;
+  }
+  $('vWindow').innerHTML = html;
+  const tiers = Object.keys(TIERS);
+  $('tTier').innerHTML = `<tr><th>Tipo</th><th class="num">Fora</th><th class="num">Dentro</th></tr>` +
+    tiers.map(t => `<tr><td>${TIERS[t].label}</td><td class="num">${o.n ? pct((o.t[t] || 0) / o.n, 2) : '-'}</td><td class="num">${w.n ? pct((w.t[t] || 0) / w.n, 2) : '-'}</td></tr>`).join('') +
+    `<tr><td class="muted">Baús</td><td class="num muted">${fmtN(o.n)}</td><td class="num muted">${fmtN(w.n)}</td></tr>`;
+}
+
+function renderTimeline(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    const t = +new Date(r.hour_utc);
+    const b = by.get(t) || { n: 0, k: 0, inw: false };
+    b.n += r.n; if (isHit(r.tier)) b.k += r.n; if (r.in_window) b.inw = true;
+    by.set(t, b);
+  }
+  const el = $('cTimeline');
+  if (!by.size) { el.innerHTML = '<p class="muted">Sem dados no período.</p>'; $('vTimeline').innerHTML = ''; return; }
+  const ts = [...by.keys()].sort((a, b) => a - b);
+  const start = Math.max(ts[0], ts[ts.length - 1] - 71 * 3600e3); // até 72 barras
+  let base = { n: 0, k: 0 };
+  for (const [, b] of by) if (!b.inw) { base.n += b.n; base.k += b.k; }
+  const p0 = base.n ? base.k / base.n : 0;
+  const items = [], shades = [];
+  const flagged = [];
+  for (let t = start, i = 0; t <= ts[ts.length - 1]; t += 3600e3, i++) {
+    const b = by.get(t) || { n: 0, k: 0, inw: windows.some(w => t >= +new Date(w.starts_at) && t < +new Date(w.ends_at)) };
+    const [lo, hi] = wilson(b.k, b.n);
+    const z = b.n && p0 > 0 && p0 < 1 ? (b.k - b.n * p0) / Math.sqrt(b.n * p0 * (1 - p0)) : 0;
+    const flag = !b.inw && b.n >= 30 && z >= 3;
+    if (flag) flagged.push(t);
+    if (b.inw) shades.push({ from: i, to: i + 1 });
+    const d = new Date(t);
+    items.push({ v: b.n ? b.k / b.n : 0, lo, hi, n: b.n, dim: b.n < 30, flag,
+      c: b.inw ? 'var(--s-in)' : 'var(--s-out)', label: hourBRT(d) + 'h',
+      tip: `<b>${fmtDT(d)}</b>${b.inw ? ' · janela anunciada' : ''}<br>${fmtN(b.k)} prêmios em ${fmtN(b.n)} baús<br>Taxa ${b.n ? pct(b.k / b.n, 2) : '-'}${flag ? '<br><b>Muito acima do normal</b>' : ''}` });
+  }
+  bars(el, items, { h: 180, labelEvery: Math.ceil(items.length / 12), shades });
+  $('vTimeline').innerHTML = flagged.length
+    ? `<div class="verdict yes"><b>${flagged.length} hora(s) suspeita(s)</b> fora de janela anunciada: ${flagged.slice(-5).map(t => fmtDT(t)).join(', ')}. Vale cadastrar como janela se a Epic confirmar.</div>`
+    : `<p class="muted">Taxa de referência fora das janelas: ${base.n ? pct(p0, 2) : '-'} em ${fmtN(base.n)} baús.</p>`;
+}
+
+function renderHourOfDay(rows) {
+  const hs = Array.from({ length: 24 }, () => ({ n: 0, k: 0 }));
+  for (const r of rows) { const h = hs[hourBRT(r.hour_utc)]; h.n += r.n; if (isHit(r.tier)) h.k += r.n; }
+  bars($('cHour'), hs.map((h, i) => {
+    const [lo, hi] = wilson(h.k, h.n);
+    return { v: h.n ? h.k / h.n : 0, lo, hi, n: h.n, dim: h.n < 30, c: 'var(--s-out)', label: i + 'h',
+             tip: `<b>${i}h às ${i + 1}h</b><br>${fmtN(h.k)} prêmios em ${fmtN(h.n)} baús<br>Taxa ${h.n ? pct(h.k / h.n, 2) : '-'}` };
+  }), { h: 160, labelEvery: 3 });
+}
+
+function renderPoi(rows) {
+  const by = {};
+  for (const r of rows) {
+    const b = by[r.poi] ||= { n: 0, k: 0, tok: 0 };
+    b.n += r.n; if (isHit(r.tier)) b.k += r.n; if (r.tier === 'token') b.tok += r.n;
+  }
+  const list = Object.entries(by).map(([poi, b]) => ({ poi, ...b, ci: wilson(b.k, b.n) })).sort((a, b) => b.ci[0] - a.ci[0] || b.n - a.n);
+  $('tPoi').innerHTML = `<tr><th>#</th><th>Quadrante</th><th class="num">Baús</th><th class="num">Taxa</th><th class="num">IC 95%</th><th class="num">Tokens</th></tr>` +
+    (list.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.poi)}</td><td class="num">${fmtN(r.n)}</td><td class="num">${pct(r.k / r.n, 2)}</td>
+      <td class="num muted">${pct(r.ci[0], 1)} a ${pct(r.ci[1], 1)}</td><td class="num">${r.tok}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">Sem dados.</td></tr>');
+}
+
+function renderFeed(rows) {
+  const ul = $('feed');
+  ul.innerHTML = '';
+  if (!rows.length) { ul.innerHTML = '<li class="muted">Nenhum ainda.</li>'; return; }
+  for (const r of rows) {
+    const li = document.createElement('li');
+    li.textContent = `${fmtDT(r.opened_at)} · ${r.nick || 'Anônimo'} · ${PRIZE_BY_KEY[r.prize]?.label || r.prize} em ${r.poi}`;
+    ul.appendChild(li);
+  }
+}
+
+// ---------- Heatmap ----------
+const hiddenTiers = new Set();
+const SHAPE_PATH = {
+  circle: '<circle cx="6" cy="6" r="4.5"/>', square: '<rect x="1.5" y="1.5" width="9" height="9"/>',
+  diamond: '<path d="M6 .8 11.2 6 6 11.2.8 6z"/>', triangle: '<path d="M6 1 11 10.5H1z"/>',
+  star: '<path d="M6 .5l1.6 3.6 3.9.4-2.9 2.6.8 3.9L6 9 2.6 11l.8-3.9L.5 4.5l3.9-.4z"/>',
+};
+const shapeSvg = m => `<svg width="12" height="12" viewBox="0 0 12 12" style="margin-right:6px;vertical-align:-1px" fill="${m.hex}" stroke="#111" stroke-width="1">${SHAPE_PATH[m.shape]}</svg>`;
+function buildTierFilter() {
+  $('tierFilter').innerHTML = Object.entries(TIER_MARK).map(([t, m]) =>
+    `<button data-t="${t}">${shapeSvg(m)}${TIERS[t].label} <span class="muted" data-c="${t}"></span></button>`).join('');
+  $('tierFilter').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const t = b.dataset.t;
+    hiddenTiers.has(t) ? hiddenTiers.delete(t) : hiddenTiers.add(t);
+    b.classList.toggle('off', hiddenTiers.has(t));
+    drawHeat();
+  };
+}
+async function loadPoints() {
+  if (!configured) return;
+  const { data, error } = await sb.from('chests').select('x,y,tier,prize,opened_at').neq('tier', 'nada').not('x', 'is', null).order('id', { ascending: false }).limit(5000);
+  if (error) return toast(error.message, null, true);
+  points = data; drawHeat();
+}
+function mark(ctx, shape, x, y, r) {
+  ctx.beginPath();
+  if (shape === 'circle') ctx.arc(x, y, r, 0, Math.PI * 2);
+  else if (shape === 'square') ctx.rect(x - r * .9, y - r * .9, r * 1.8, r * 1.8);
+  else if (shape === 'diamond') { ctx.moveTo(x, y - r * 1.2); ctx.lineTo(x + r * 1.2, y); ctx.lineTo(x, y + r * 1.2); ctx.lineTo(x - r * 1.2, y); }
+  else if (shape === 'triangle') { ctx.moveTo(x, y - r * 1.2); ctx.lineTo(x + r * 1.1, y + r * .8); ctx.lineTo(x - r * 1.1, y + r * .8); }
+  else { for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .6 : r * 1.5; ctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); } }
+  ctx.closePath();
+  ctx.lineWidth = 2; ctx.strokeStyle = '#111'; ctx.stroke(); ctx.fill();
+}
+function drawHeat() {
+  const cv = $('heat'), r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  cv.width = r.width * dpr; cv.height = r.height * dpr;
+  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
+  const order = ['gizmo', 'cosmetico', 'veiculo', 'dourado', 'token']; // raros por cima
+  const counts = {};
+  const pts = points.filter(p => TIER_MARK[p.tier] && !hiddenTiers.has(p.tier))
+                    .sort((a, b) => order.indexOf(a.tier) - order.indexOf(b.tier));
+  for (const p of points) counts[p.tier] = (counts[p.tier] || 0) + 1;
+  const rad = Math.max(4, r.width / 110);
+  for (const p of pts) {
+    const m = TIER_MARK[p.tier];
+    ctx.fillStyle = m.hex;
+    mark(ctx, m.shape, p.x * r.width, p.y * r.height, p.tier === 'token' ? rad * 1.4 : rad);
+  }
+  document.querySelectorAll('#tierFilter [data-c]').forEach(el => el.textContent = counts[el.dataset.c] || 0);
+  $('heatInfo').textContent = `${fmtN(pts.length)} baús premiados no mapa (últimos 5.000).`;
+}
+addEventListener('resize', () => {
+  if ($('tab-mapa').classList.contains('on')) drawHeat();
+  if ($('tab-resultados').classList.contains('on') && hourly.length) renderResults();
+});
+
+// ---------- Admin (senha) ----------
+function openAdmin() {
+  $('navAdmin').style.display = '';
+  $('navAdmin').click();
+}
+async function unlockAdmin() {
+  const k = $('adminKey').value;
+  const { data } = await sb.rpc('admin_check', { p_key: k });
+  if (!data) return toast('Senha incorreta', null, true);
+  adminKey = k; store.set('adminKey', k); $('adminKey').value = '';
+  loadAdmin();
+}
+function lockAdmin() { adminKey = null; store.set('adminKey', null); loadAdmin(); }
+const adm = async (fn, args) => {
+  const { data, error } = await sb.rpc(fn, { p_key: adminKey, ...args });
+  if (error) { toast(error.message, null, true); throw error; }
+  return data;
+};
+async function loadAdmin() {
+  const ok = !!adminKey && configured && (await sb.rpc('admin_check', { p_key: adminKey })).data;
+  $('adminLock').style.display = ok ? 'none' : '';
+  $('adminArea').style.display = ok ? '' : 'none';
+  if (!ok) return;
+  const [{ data: w }, f] = await Promise.all([
+    sb.from('event_windows').select('*').order('starts_at', { ascending: false }),
+    adm('admin_recent', {}),
+  ]);
+  $('wins').innerHTML = (w || []).map(x => `<tr><td>${esc(x.label)}</td><td>${fmtDT(x.starts_at)} a ${fmtDT(x.ends_at)}</td>
+    <td class="num"><button class="danger" data-w="${x.id}">✕</button></td></tr>`).join('') || '<tr><td class="muted">Nenhuma janela.</td></tr>';
+  $('wins').onclick = async e => {
+    const b = e.target.closest('button[data-w]'); if (!b) return;
+    await adm('admin_delete_window', { p_id: +b.dataset.w }); lastLoad = 0; loadAdmin();
+  };
+  $('adminFeed').innerHTML = (f || []).map(r => `<tr><td>${fmtDT(r.opened_at)}</td><td>${esc(r.nick || 'Anônimo')}<br><span class="muted">${esc(r.device)}</span></td><td>${esc(PRIZE_BY_KEY[r.prize]?.label || r.prize)}<br><span class="muted">${esc(r.poi)}</span></td>
+    <td class="num"><button class="danger" data-d="${r.id}">Apagar</button> <button class="danger" data-b="${r.id}">Apagar aparelho</button></td></tr>`).join('') || '<tr><td class="muted">Nenhum registro.</td></tr>';
+  $('adminFeed').onclick = async e => {
+    const d = e.target.closest('button[data-d]'), b = e.target.closest('button[data-b]');
+    if (d) { await adm('admin_delete_chest', { p_id: +d.dataset.d }); loadAdmin(); }
+    if (b && confirm('Apagar TODOS os registros desse aparelho?')) {
+      const n = await adm('admin_delete_device', { p_id: +b.dataset.b }); toast(`${n} registros apagados`); loadAdmin();
+    }
+  };
+}
+async function addWindow() {
+  const s = $('wStart').value, e = $('wEnd').value;
+  if (!s || !e) return toast('Preencha início e fim', null, true);
+  await adm('admin_add_window', { p_label: $('wLabel').value, p_start: new Date(s).toISOString(), p_end: new Date(e).toISOString() });
+  $('wLabel').value = $('wStart').value = $('wEnd').value = ''; lastLoad = 0; loadAdmin(); toast('Janela adicionada');
+}
+
+// ---------- Início ----------
+buildForm();
+mountMap($('heatMap'));
+buildTierFilter();
+if (configured) {
+  loadMine();
+  if (adminKey) $('navAdmin').style.display = '';
+} else {
+  toast('Modo sem banco: configure o Supabase no topo do script', null, true);
+}
+</script>
+</body>
+</html>
